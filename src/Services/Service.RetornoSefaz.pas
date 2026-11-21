@@ -76,6 +76,13 @@ begin
       Result := 'Inscrição estadual do destinatário inválida. Confira a IE e o indicador de IE no cadastro do cliente.';
     207, 208, 209:
       Result := 'CNPJ/IE do emitente inválido ou não habilitado. Confira o cadastro do emitente.';
+    230, 231, 245:
+      Result := 'O emitente não consta no cadastro de contribuintes de ICMS da SEFAZ (ou a IE não é deste CNPJ). ' +
+        'Para emitir NF-e/NFC-e a empresa precisa de inscrição estadual ativa na UF.';
+    554:
+      Result := 'O emitente não pode ser ISENTO: NF-e e NFC-e exigem a inscrição estadual do emitente.';
+    972:
+      Result := 'Faltam os dados do responsável técnico. Preencha a seção [ResponsavelTecnico] do config.ini.';
     232, 237:
       Result := 'CPF/CNPJ do destinatário inválido. Confira o cadastro do cliente.';
     539:

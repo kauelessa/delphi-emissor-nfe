@@ -17,6 +17,7 @@ type
     [TestCase('duplicidade', '204,2')]
     [TestCase('lote em processamento', '105,3')]
     [TestCase('rejeição NCM', '778,4')]
+    [TestCase('rejeição emitente sem cadastro', '245,4')]
     [TestCase('evento registrado', '135,5')]
     [TestCase('inutilização homologada', '102,6')]
     [TestCase('serviço em operação', '107,7')]
@@ -26,6 +27,8 @@ type
 
     [Test]
     procedure Mensagem_RejeicaoConhecida_IncluiOrientacao;
+    [Test]
+    procedure Mensagem_EmitenteSemInscricaoEstadual_ExplicaIE;
     [Test]
     procedure Mensagem_RejeicaoDesconhecida_MostraSoCodigoEMotivo;
   end;
@@ -47,6 +50,12 @@ begin
   LMensagem := TRetornoSefaz.Mensagem(778, 'Rejeicao: Informado NCM inexistente');
   Assert.StartsWith('778 - Rejeicao: Informado NCM inexistente', LMensagem);
   Assert.Contains(LMensagem, 'cadastro do produto');
+end;
+
+procedure TTestRetornoSefaz.Mensagem_EmitenteSemInscricaoEstadual_ExplicaIE;
+begin
+  Assert.Contains(TRetornoSefaz.Mensagem(245, 'Rejeicao: CNPJ Emitente nao cadastrado'),
+    'inscrição estadual');
 end;
 
 procedure TTestRetornoSefaz.Mensagem_RejeicaoDesconhecida_MostraSoCodigoEMotivo;
