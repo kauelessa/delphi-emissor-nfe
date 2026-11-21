@@ -49,8 +49,6 @@ delphi-emissor-nfe/
 
 ## 🖥️ Telas
 
-> As imagens abaixo são **reproduções ilustrativas** geradas a partir dos `.dfm` do projeto (layout, componentes e textos de cada tela), preenchidas com os dados de exemplo dos scripts de `database/`. Não são capturas do sistema em execução.
-
 **Tela principal**: atalhos de emissão, cadastros e serviços da SEFAZ, com o ambiente em destaque.
 
 ![Tela principal](docs/screenshots/01-principal.png)
