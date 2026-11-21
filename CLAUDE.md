@@ -11,7 +11,7 @@ Emissor de NF-e (modelo 55) e NFC-e (modelo 65) em Delphi VCL, usando os compone
 - Delphi / RAD Studio (Community Edition ou superior). A compilação e o design de forms são feitos no RAD Studio; o Claude Code edita `.pas`, `.dpr`, scripts SQL e documentação pelo VS Code.
 - Não altere manualmente `.dproj`, `.res` ou `.dfm`, a menos que seja pedido explicitamente. Se uma unit nova precisar ser adicionada ao projeto, avise para incluí-la pelo RAD Studio (ou atualize o `uses` do `.dpr` e informe). Quando um form precisar de componentes novos, descreva quais adicionar e com quais nomes.
 - Componentes ACBr instalados na IDE pelo instalador oficial (não versionar fontes do ACBr no repositório).
-- Banco: Firebird 5.0 via FireDAC. Scripts SQL ficam em `database/`, numerados (`001_create_tables.sql`, `002_...`).
+- Banco: Firebird 5.0 via FireDAC. Scripts SQL ficam em `database/`, numerados (`001_create_tables.sql`, `002_...`). Migrações automáticas: veja a seção "Banco e migrações".
 
 ## Interface (UI)
 
@@ -39,6 +39,14 @@ Camadas, em `src/`:
 - `Infra/` — conexão, configuração (`config.ini`), logs e utilitários.
 
 Use interfaces (`INotaService`, `IProdutoRepository`) para permitir testes com DUnitX.
+
+## Banco e migrações
+
+- O banco é criado e atualizado pelo próprio sistema na abertura (`Infra.Migracao`): os scripts de `database/` rodam em ordem de nome e cada script aplicado é gravado na tabela `SCHEMA_VERSAO`, para nunca rodar de novo.
+- **Nunca altere um script já versionado**: toda mudança de estrutura ou de dados vai num script novo, com o próximo número (`004_...sql`).
+- Scripts com `_seed_` no nome são dados de exemplo e só rodam com `ExecutarSeeds=1` no `config.ini`. Use apenas dados fictícios. Dados que o sistema precisa para funcionar (ex.: formas de pagamento) vão em script normal, sem `_seed_`.
+- Cada script termina com `COMMIT;` (para rodar também no isql), é salvo em UTF-8 e usa sintaxe compatível com Firebird 3.0 ou superior. Não use `CREATE DATABASE` nem `SET SQL DIALECT`: a criação do banco é feita pelo sistema (`CriarBanco=1`).
+- Ao adicionar um script, atualize a tabela da seção Migrações do `README.md`.
 
 ## Padrões de código
 
