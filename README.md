@@ -25,6 +25,7 @@ Emissor de **NF-e (modelo 55)** e **NFC-e (modelo 65)** desenvolvido em **Delphi
 | Banco de dados | Firebird 5.0 |
 | Acesso a dados | FireDAC |
 | Relatórios | Fortes Report (DANFE via ACBr) |
+| Componentes de interface | DevExpress VCL Controls v26.1.5 |
 | Testes | DUnitX |
 
 ## 📁 Estrutura
@@ -48,9 +49,12 @@ delphi-emissor-nfe/
 
 1. Instale o [Firebird 5.0](https://firebirdsql.org/) e execute os scripts em `database/` para criar o banco.
 2. Instale os componentes ACBr no RAD Studio pelo instalador oficial do [Projeto ACBr](https://projetoacbr.com.br/).
-3. Copie `config.example.ini` para `config.ini` e preencha os dados de conexão e do emitente.
-4. Abra o projeto `.dproj` no RAD Studio, compile e execute.
-5. Na tela de configuração, selecione seu certificado digital **A1** e mantenha o ambiente em **homologação**.
+3. Instale o **DevExpress VCL Controls v26.1.5** no RAD Studio.
+4. Copie `config.example.ini` para `config.ini` e preencha os dados de conexão e do emitente.
+5. Abra o projeto `.dproj` no RAD Studio, compile e execute.
+6. Na tela de configuração, selecione seu certificado digital **A1** e mantenha o ambiente em **homologação**.
+
+> ℹ️ O DevExpress é uma biblioteca comercial: é necessário ter uma licença válida (ou a versão de avaliação) para abrir os forms e compilar o projeto.
 
 > ⚠️ O certificado digital e os dados reais do emitente **nunca** são versionados. Notas emitidas em homologação não têm valor fiscal.
 
