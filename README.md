@@ -32,27 +32,62 @@ Emissor de **NF-e (modelo 55)** e **NFC-e (modelo 65)** desenvolvido em **Delphi
 
 ```
 delphi-emissor-nfe/
+├── EmissorNFe.dpr     # Projeto principal
+├── config.example.ini # Modelo do config.ini (dados fictícios)
 ├── src/
-│   ├── Views/         # Forms VCL (telas)
-│   ├── Controllers/   # Ligação entre telas e regras
-│   ├── Services/      # Regras de negócio e fluxo fiscal (ACBr)
-│   ├── Repositories/  # Acesso ao banco (FireDAC)
+│   ├── Views/         # Forms VCL com DevExpress (só interface)
+│   ├── Controllers/   # Ligação entre telas e services
+│   ├── Services/      # Regras de negócio e fluxo fiscal
+│   ├── Repositories/  # Acesso ao banco (FireDAC, SQL parametrizado)
 │   ├── Models/        # Entidades e DTOs
-│   └── Infra/         # Conexão, configuração, utilitários
-├── database/          # Scripts SQL de criação do banco
-├── tests/             # Testes unitários (DUnitX)
+│   └── Infra/         # Conexão, config.ini, log, XML em disco, validação de documentos
+├── database/          # Scripts SQL numerados (Firebird 5.0)
+├── tests/             # Testes unitários (DUnitX) com fakes
 └── docs/
     └── screenshots/   # Prints das telas e DANFEs gerados
 ```
 
+## 🏗️ Arquitetura
+
+- **ACBr isolado:** toda a comunicação com a SEFAZ passa pela interface `IEmissorFiscal`. A única implementação real é `Service.ACBr.pas`, registrada no `EmissorNFe.dpr`. O resto da aplicação, e os testes, não conhecem o ACBr.
+- **Fluxo fiscal em `Service.Nota`:** validação, numeração (reservada só na primeira transmissão), envio, tratamento do `cStat`, contingência offline automática da NFC-e, cancelamento, CC-e e inutilização.
+- **Rastreabilidade:** toda operação fiscal grava o XML de envio/retorno (`xml\<CNPJ>\<AAAAMM>\`), registra um evento na tabela `NOTA_EVENTO` e escreve no log diário (`logs\`).
+- **Cálculos em `Currency`:** rateio de desconto sem perda de centavos, ICMS (CST 00/20), PIS/COFINS e troco, todos cobertos por testes.
+
 ## ▶️ Como executar
 
-1. Instale o [Firebird 5.0](https://firebirdsql.org/) e execute os scripts em `database/` para criar o banco.
-2. Instale os componentes ACBr no RAD Studio pelo instalador oficial do [Projeto ACBr](https://projetoacbr.com.br/).
+1. Instale o [Firebird 5.0](https://firebirdsql.org/) (os scripts também funcionam no 3.0 e no 4.0). Banco e tabelas são criados pelo próprio sistema na primeira execução (veja [Migrações](#migrações)); basta a pasta do arquivo `.fdb` existir no servidor.
+2. Instale os componentes ACBr no RAD Studio pelo instalador oficial do [Projeto ACBr](https://projetoacbr.com.br/) (pacotes NFe, DANFE Fortes e Mail).
 3. Instale o **DevExpress VCL Controls v26.1.5** no RAD Studio.
-4. Copie `config.example.ini` para `config.ini` e preencha os dados de conexão e do emitente.
-5. Abra o projeto `.dproj` no RAD Studio, compile e execute.
-6. Na tela de configuração, selecione seu certificado digital **A1** e mantenha o ambiente em **homologação**.
+4. Copie `config.example.ini` para `config.ini`, ao lado do executável, e preencha o banco, o certificado A1, o CSC da NFC-e e o SMTP. Em desenvolvimento, ligue `CriarBanco=1` e `ExecutarSeeds=1` na seção `[Migracao]` para abrir com banco, tabelas e dados de exemplo prontos.
+5. Baixe os schemas da NF-e (pasta `Schemas` do ACBr) para a pasta indicada em `PastaSchemas`.
+6. Abra o `EmissorNFe.dpr` no RAD Studio (o `.dproj` é gerado na primeira abertura), compile e execute.
+7. Na tela **Emitente**, cadastre os dados da empresa dona do certificado. Mantenha `Ambiente=homologacao`.
+
+### Migrações
+
+Ao abrir, o sistema cria o banco se ele não existir (com `CriarBanco=1`), aplica os scripts de `database/` que ainda não rodaram naquele banco, em ordem de nome, e registra cada um na tabela `SCHEMA_VERSAO`:
+
+| Script | Conteúdo | Quando roda |
+|---|---|---|
+| `001_create_tables.sql` | estrutura: emitente, cadastros, notas, itens, pagamentos e eventos | sempre |
+| `002_formas_pagamento.sql` | formas de pagamento com o código da SEFAZ | sempre |
+| `003_seed_dados_exemplo.sql` | emitente fictício, produtos e cliente de teste | só com `ExecutarSeeds=1` |
+
+Configuração na seção `[Migracao]` do `config.ini`:
+
+| Chave | Padrão | Descrição |
+|---|---|---|
+| `CriarBanco` | `0` | cria o arquivo do banco (charset UTF8) se ele não existir. Desligue em produção: um caminho errado criaria um banco vazio em vez de dar erro |
+| `Executar` | `1` | `0` desliga as migrações (o banco passa a ser responsabilidade de quem implanta) |
+| `ExecutarSeeds` | `0` | aplica os scripts com `_seed_` no nome. **Use só em desenvolvimento** |
+| `Pasta` | `.\database` | pasta dos scripts, absoluta ou relativa ao executável |
+
+Script já aplicado nunca roda de novo, então mudança no banco vai sempre num **script novo** com o próximo número. Seed pulado não é registrado: se `ExecutarSeeds` for ligado depois, ele roda na próxima abertura. Se um script falhar, o sistema não abre e mostra o erro.
+
+### Testes
+
+Abra `tests/EmissorNFeTests.dpr` e execute (console DUnitX). Os testes rodam sem banco, sem certificado e sem ACBr.
 
 > ℹ️ O DevExpress é uma biblioteca comercial: é necessário ter uma licença válida (ou a versão de avaliação) para abrir os forms e compilar o projeto.
 
