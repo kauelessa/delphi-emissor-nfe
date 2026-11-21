@@ -13,6 +13,13 @@ Emissor de NF-e (modelo 55) e NFC-e (modelo 65) em Delphi VCL, usando os compone
 - Componentes ACBr instalados na IDE pelo instalador oficial (não versionar fontes do ACBr no repositório).
 - Banco: Firebird 5.0 via FireDAC. Scripts SQL ficam em `database/`, numerados (`001_create_tables.sql`, `002_...`).
 
+## Interface (UI)
+
+- Sempre dar preferência aos componentes do **DevExpress VCL Controls v26.1.5** nas telas. Exemplos: `TcxGrid` para grades; `TcxTextEdit`, `TcxMaskEdit`, `TcxCurrencyEdit`, `TcxDateEdit` e `TcxLookupComboBox` para campos; `TdxLayoutControl` para o layout dos forms; `TcxPageControl` para abas; `TdxBarManager` ou `TdxRibbon` para menus; `TdxSkinController` para o tema visual.
+- Usar componentes padrão da VCL apenas quando não houver equivalente DevExpress adequado, explicando o motivo.
+- Ao sugerir componentes para um form, informar a classe DevExpress, o nome proposto e as propriedades principais a configurar.
+- Usar apenas recursos e APIs disponíveis na versão 26.1.5; se algo depender de outra versão, avisar antes.
+
 ## Regras fiscais e de segurança (obrigatórias)
 
 - Ambiente **sempre homologação** (`taHomologacao`) por padrão. Nunca deixar produção como padrão no código ou no `config.example.ini`.
