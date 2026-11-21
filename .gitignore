@@ -83,3 +83,14 @@ __recovery/
 *.pfx
 *.p12
 config.ini
+
+# XMLs fiscais, logs e banco local (nunca versionar)
+xml/
+logs/
+*.fdb
+*.FDB
+
+# saída de compilação e resultados de teste
+Win32/
+Win64/
+dunitx-results.xml
