@@ -73,6 +73,7 @@ Ao abrir, o sistema cria o banco se ele não existir (com `CriarBanco=1`), aplic
 | `001_create_tables.sql` | estrutura: emitente, cadastros, notas, itens, pagamentos e eventos | sempre |
 | `002_formas_pagamento.sql` | formas de pagamento com o código da SEFAZ | sempre |
 | `003_seed_dados_exemplo.sql` | emitente fictício, produtos e cliente de teste | só com `ExecutarSeeds=1` |
+| `004_seed_corrige_ncm_caneca.sql` | corrige o NCM da caneca de exemplo (6911.10.90) | só com `ExecutarSeeds=1` |
 
 Configuração na seção `[Migracao]` do `config.ini`:
 
