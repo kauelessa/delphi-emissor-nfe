@@ -33,6 +33,16 @@ type
     CSC: string;
   end;
 
+  // empresa que desenvolveu o software (grupo infRespTec da NF-e)
+  TConfigResponsavelTecnico = record
+    CNPJ: string;
+    Contato: string;
+    Email: string;
+    Fone: string;
+    IdCSRT: Integer;
+    CSRT: string;
+  end;
+
   TConfigMigracao = record
     CriarBanco: Boolean;
     Executar: Boolean;
@@ -57,6 +67,7 @@ type
     FNFe: TConfigNFe;
     FEmail: TConfigEmail;
     FMigracao: TConfigMigracao;
+    FResponsavelTecnico: TConfigResponsavelTecnico;
     FPastaLog: string;
     class function CaminhoAbsoluto(const ACaminho: string): string; static;
   public
@@ -68,6 +79,7 @@ type
     property NFe: TConfigNFe read FNFe;
     property Email: TConfigEmail read FEmail;
     property Migracao: TConfigMigracao read FMigracao;
+    property ResponsavelTecnico: TConfigResponsavelTecnico read FResponsavelTecnico;
     property PastaLog: string read FPastaLog;
   end;
 
@@ -154,6 +166,13 @@ begin
     FEmail.TLS := LIni.ReadBool('Email', 'TLS', True);
     FEmail.Remetente := LIni.ReadString('Email', 'Remetente', '');
     FEmail.NomeRemetente := LIni.ReadString('Email', 'NomeRemetente', '');
+
+    FResponsavelTecnico.CNPJ := LIni.ReadString('ResponsavelTecnico', 'CNPJ', '');
+    FResponsavelTecnico.Contato := LIni.ReadString('ResponsavelTecnico', 'Contato', '');
+    FResponsavelTecnico.Email := LIni.ReadString('ResponsavelTecnico', 'Email', '');
+    FResponsavelTecnico.Fone := LIni.ReadString('ResponsavelTecnico', 'Fone', '');
+    FResponsavelTecnico.IdCSRT := LIni.ReadInteger('ResponsavelTecnico', 'IdCSRT', 0);
+    FResponsavelTecnico.CSRT := LIni.ReadString('ResponsavelTecnico', 'CSRT', '');
 
     // CriarBanco desligado por padrão: caminho errado criaria um banco vazio em vez de dar erro
     FMigracao.CriarBanco := LIni.ReadBool('Migracao', 'CriarBanco', False);

@@ -116,6 +116,10 @@ begin
   FNFe.Configuracoes.Arquivos.Salvar := False;
   FNFe.Configuracoes.Arquivos.PathSchemas := LCfg.PastaSchemas;
 
+  // CSRT só existe nas UFs que exigem; sem ele o ACBr não gera o hashCSRT
+  FNFe.Configuracoes.RespTec.IdCSRT := Config.ResponsavelTecnico.IdCSRT;
+  FNFe.Configuracoes.RespTec.CSRT := Config.ResponsavelTecnico.CSRT;
+
   FNFe.Configuracoes.Certificados.ArquivoPFX := LCfg.Certificado;
   FNFe.Configuracoes.Certificados.Senha := AnsiString(LCfg.SenhaCertificado);
 
@@ -345,6 +349,11 @@ begin
   LNFe.pag.vTroco := ANota.ValorTroco;
 
   LNFe.InfAdic.infCpl := ANota.Observacao;
+
+  LNFe.infRespTec.CNPJ := SoNumeros(Config.ResponsavelTecnico.CNPJ);
+  LNFe.infRespTec.xContato := Config.ResponsavelTecnico.Contato;
+  LNFe.infRespTec.email := Config.ResponsavelTecnico.Email;
+  LNFe.infRespTec.fone := SoNumeros(Config.ResponsavelTecnico.Fone);
 end;
 
 procedure TEmissorACBr.CarregarXml(const AXml: string; AModelo: TModeloNota);

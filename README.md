@@ -59,7 +59,7 @@ delphi-emissor-nfe/
 1. Instale o [Firebird 5.0](https://firebirdsql.org/) (os scripts também funcionam no 3.0 e no 4.0). Banco e tabelas são criados pelo próprio sistema na primeira execução (veja [Migrações](#migrações)); basta a pasta do arquivo `.fdb` existir no servidor.
 2. Instale os componentes ACBr no RAD Studio pelo instalador oficial do [Projeto ACBr](https://projetoacbr.com.br/) (pacotes NFe, DANFE Fortes e Mail).
 3. Instale o **DevExpress VCL Controls v26.1.5** no RAD Studio.
-4. Copie `config.example.ini` para `config.ini`, ao lado do executável, e preencha o banco, o certificado A1, o CSC da NFC-e e o SMTP. Em desenvolvimento, ligue `CriarBanco=1` e `ExecutarSeeds=1` na seção `[Migracao]` para abrir com banco, tabelas e dados de exemplo prontos.
+4. Copie `config.example.ini` para `config.ini`, ao lado do executável, e preencha o banco, o certificado A1, o CSC da NFC-e, o responsável técnico pelo software (grupo `infRespTec` da NF-e) e o SMTP. Em desenvolvimento, ligue `CriarBanco=1` e `ExecutarSeeds=1` na seção `[Migracao]` para abrir com banco, tabelas e dados de exemplo prontos.
 5. Em `PastaSchemas`, indique a pasta dos schemas (XSD) da NF-e. O ACBr já traz a versão atual em `<pasta do ACBr>\Exemplos\ACBrDFe\Schemas\NFe`; apontar para ela mantém os schemas atualizados junto com o ACBr.
 6. Abra o `EmissorNFe.dpr` no RAD Studio (o `.dproj` é gerado na primeira abertura), compile e execute.
 7. Na tela **Emitente**, cadastre os dados da empresa dona do certificado. Mantenha `Ambiente=homologacao`.
