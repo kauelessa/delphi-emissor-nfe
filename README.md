@@ -44,7 +44,7 @@ delphi-emissor-nfe/
 ├── database/          # Scripts SQL numerados (Firebird 5.0)
 ├── tests/             # Testes unitários (DUnitX) com fakes
 └── docs/
-    └── screenshots/   # Telas do sistema (reproduções ilustrativas)
+    └── screenshots/   # Telas do sistema
 ```
 
 ## 🖥️ Telas
