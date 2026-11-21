@@ -1,0 +1,74 @@
+﻿unit Controller.Fabrica;
+
+// Monta os services com as dependências reais (repositórios FireDAC, log, XML).
+// O emissor fiscal é registrado pelo .dpr, assim nada aqui depende do ACBr.
+
+interface
+
+uses
+  System.SysUtils, Service.EmissorFiscal, Service.Nota, Service.Emitente, Service.Cliente,
+  Service.Produto, Service.FormaPagamento;
+
+type
+  TFabrica = class
+  private
+    class var FCriarEmissor: TFunc<IEmissorFiscal>;
+  public
+    class procedure RegistrarEmissor(const ACriar: TFunc<IEmissorFiscal>);
+    class function NotaService: INotaService;
+    class function EmitenteService: IEmitenteService;
+    class function ClienteService: IClienteService;
+    class function ProdutoService: IProdutoService;
+    class function FormaPagamentoService: IFormaPagamentoService;
+  end;
+
+implementation
+
+uses
+  Infra.Conexao, Infra.Config, Infra.Log, Infra.ArquivoXml, Repository.Nota,
+  Repository.Emitente, Repository.Cliente, Repository.Produto, Repository.FormaPagamento,
+  Repository.EventoFiscal;
+
+class procedure TFabrica.RegistrarEmissor(const ACriar: TFunc<IEmissorFiscal>);
+begin
+  FCriarEmissor := ACriar;
+end;
+
+class function TFabrica.NotaService: INotaService;
+begin
+  if not Assigned(FCriarEmissor) then
+    raise Exception.Create('Emissor fiscal não registrado (TFabrica.RegistrarEmissor)');
+
+  Result := TNotaService.Create(
+    TNotaRepository.Create(Conexao),
+    TEmitenteRepository.Create(Conexao),
+    TClienteRepository.Create(Conexao),
+    TProdutoRepository.Create(Conexao),
+    TFormaPagamentoRepository.Create(Conexao),
+    TEventoFiscalRepository.Create(Conexao),
+    FCriarEmissor(),
+    TArquivoXmlDisco.Create(Config.NFe.PastaXml),
+    Log);
+end;
+
+class function TFabrica.EmitenteService: IEmitenteService;
+begin
+  Result := TEmitenteService.Create(TEmitenteRepository.Create(Conexao));
+end;
+
+class function TFabrica.ClienteService: IClienteService;
+begin
+  Result := TClienteService.Create(TClienteRepository.Create(Conexao));
+end;
+
+class function TFabrica.ProdutoService: IProdutoService;
+begin
+  Result := TProdutoService.Create(TProdutoRepository.Create(Conexao));
+end;
+
+class function TFabrica.FormaPagamentoService: IFormaPagamentoService;
+begin
+  Result := TFormaPagamentoService.Create(TFormaPagamentoRepository.Create(Conexao));
+end;
+
+end.
