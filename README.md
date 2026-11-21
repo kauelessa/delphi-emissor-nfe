@@ -2,7 +2,7 @@
 
 Emissor de **NF-e (modelo 55)** e **NFC-e (modelo 65)** desenvolvido em **Delphi (VCL)** com os componentes **[ACBr](https://projetoacbr.com.br/)** e banco de dados **Firebird**, operando em **ambiente de homologação** da SEFAZ.
 
-> 🚧 Projeto em desenvolvimento — faz parte do meu portfólio. Demonstra o fluxo fiscal completo que uso no dia a dia em ERPs para varejo: cadastro, emissão, transmissão, impressão e eventos da nota.
+> Faz parte do meu portfólio. Demonstra o fluxo fiscal completo que uso no dia a dia em ERPs para varejo: cadastro, emissão, transmissão, impressão e eventos da nota.
 
 ## 🎯 Funcionalidades
 
@@ -32,7 +32,7 @@ Emissor de **NF-e (modelo 55)** e **NFC-e (modelo 65)** desenvolvido em **Delphi
 
 ```
 delphi-emissor-nfe/
-├── EmissorNFe.dpr     # Projeto principal
+├── EmissorNFe.dproj   # Projeto principal (RAD Studio)
 ├── config.example.ini # Modelo do config.ini (dados fictícios)
 ├── src/
 │   ├── Views/         # Forms VCL com DevExpress (só interface)
@@ -44,8 +44,48 @@ delphi-emissor-nfe/
 ├── database/          # Scripts SQL numerados (Firebird 5.0)
 ├── tests/             # Testes unitários (DUnitX) com fakes
 └── docs/
-    └── screenshots/   # Prints das telas e DANFEs gerados
+    └── screenshots/   # Telas do sistema (reproduções ilustrativas)
 ```
+
+## 🖥️ Telas
+
+> As imagens abaixo são **reproduções ilustrativas** geradas a partir dos `.dfm` do projeto (layout, componentes e textos de cada tela), preenchidas com os dados de exemplo dos scripts de `database/`. Não são capturas do sistema em execução.
+
+**Tela principal**: atalhos de emissão, cadastros e serviços da SEFAZ, com o ambiente em destaque.
+
+![Tela principal](docs/screenshots/01-principal.png)
+
+**Emissão de NFC-e**: itens, desconto rateado entre os itens, várias formas de pagamento e troco.
+
+![Emissão de NFC-e](docs/screenshots/02-emissao-nfce.png)
+
+**Notas emitidas**: filtro por período, modelo e situação; impressão, PDF, e-mail, XML, cancelamento, CC-e e transmissão das notas em contingência.
+
+![Notas emitidas](docs/screenshots/03-notas-emitidas.png)
+
+<details>
+<summary><b>Mais telas</b>: cadastros, emitente, inutilização e cancelamento</summary>
+
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/04-cliente-cadastro.png" alt="Cadastro de cliente"><br>Cadastro de cliente</td>
+<td align="center"><img src="docs/screenshots/05-produtos-lista.png" alt="Lista de produtos"><br>Lista de produtos</td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/06-produto-tributacao.png" alt="Tributação do produto"><br>Produto: NCM, CFOP, CST/CSOSN, PIS e COFINS</td>
+<td align="center"><img src="docs/screenshots/07-emitente.png" alt="Emitente"><br>Emitente, endereço e numeração</td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/08-formas-pagamento.png" alt="Formas de pagamento"><br>Formas de pagamento (código tPag)</td>
+<td align="center"><img src="docs/screenshots/09-inutilizacao.png" alt="Inutilização"><br>Inutilização de numeração</td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/10-cancelamento.png" alt="Cancelamento"><br>Justificativa de cancelamento</td>
+<td></td>
+</tr>
+</table>
+
+</details>
 
 ## 🏗️ Arquitetura
 
@@ -61,7 +101,7 @@ delphi-emissor-nfe/
 3. Instale o **DevExpress VCL Controls v26.1.5** no RAD Studio.
 4. Copie `config.example.ini` para `config.ini`, ao lado do executável, e preencha o banco, o certificado A1, o CSC da NFC-e, o responsável técnico pelo software (grupo `infRespTec` da NF-e) e o SMTP. Em desenvolvimento, ligue `CriarBanco=1` e `ExecutarSeeds=1` na seção `[Migracao]` para abrir com banco, tabelas e dados de exemplo prontos.
 5. Em `PastaSchemas`, indique a pasta dos schemas (XSD) da NF-e. O ACBr já traz a versão atual em `<pasta do ACBr>\Exemplos\ACBrDFe\Schemas\NFe`; apontar para ela mantém os schemas atualizados junto com o ACBr.
-6. Abra o `EmissorNFe.dpr` no RAD Studio (o `.dproj` é gerado na primeira abertura), compile e execute.
+6. Abra o `EmissorNFe.dproj` no RAD Studio, compile e execute.
 7. Na tela **Emitente**, cadastre os dados da empresa dona do certificado. Mantenha `Ambiente=homologacao`.
 
 ### Migrações
@@ -94,15 +134,15 @@ Abra `tests/EmissorNFeTests.dpr` e execute (console DUnitX). Os testes rodam sem
 
 > ⚠️ O certificado digital e os dados reais do emitente **nunca** são versionados. Notas emitidas em homologação não têm valor fiscal.
 
-## 🗺️ Roadmap
+## ✅ Funcionalidades entregues
 
-- [ ] Banco de dados e cadastros (emitente, clientes, produtos)
-- [ ] Configuração do ACBr e consulta de status da SEFAZ
-- [ ] Emissão de NF-e em homologação + DANFE
-- [ ] Emissão de NFC-e + DANFE NFC-e com QR Code
-- [ ] Cancelamento, CC-e e inutilização
-- [ ] Contingência offline (NFC-e)
-- [ ] Envio por e-mail e consulta de XMLs
+- [x] Banco de dados e cadastros (emitente, clientes, produtos)
+- [x] Configuração do ACBr e consulta de status da SEFAZ
+- [x] Emissão de NF-e em homologação + DANFE
+- [x] Emissão de NFC-e + DANFE NFC-e com QR Code
+- [x] Cancelamento, CC-e e inutilização
+- [x] Contingência offline (NFC-e)
+- [x] Envio por e-mail e consulta de XMLs
 
 ## 👤 Autor
 
