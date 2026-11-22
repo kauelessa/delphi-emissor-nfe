@@ -26,6 +26,8 @@ uses
   Infra.Migracao in '..\src\Infra\Infra.Migracao.pas',
   Infra.ApiPedidos in '..\src\Infra\Infra.ApiPedidos.pas',
   Model.PedidoApi in '..\src\Models\Model.PedidoApi.pas',
+  Repository.VinculoProduto in '..\src\Repositories\Repository.VinculoProduto.pas',
+  Service.FaturamentoPedido in '..\src\Services\Service.FaturamentoPedido.pas',
   Repository.Emitente in '..\src\Repositories\Repository.Emitente.pas',
   Repository.Cliente in '..\src\Repositories\Repository.Cliente.pas',
   Repository.Produto in '..\src\Repositories\Repository.Produto.pas',
@@ -42,7 +44,8 @@ uses
   Test.RetornoSefaz in 'Test.RetornoSefaz.pas',
   Test.NotaService in 'Test.NotaService.pas',
   Test.Migracao in 'Test.Migracao.pas',
-  Test.ApiPedidos in 'Test.ApiPedidos.pas';
+  Test.ApiPedidos in 'Test.ApiPedidos.pas',
+  Test.FaturamentoPedido in 'Test.FaturamentoPedido.pas';
 
 var
   LRunner: ITestRunner;
