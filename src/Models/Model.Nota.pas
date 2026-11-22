@@ -34,6 +34,7 @@ type
     FArquivoXml: string;
     FObservacao: string;
     FPedidoApiId: Integer;
+    FFaturamentoPendente: Boolean;
     FItens: TObjectList<TItemNota>;
     FPagamentos: TObjectList<TPagamentoNota>;
   public
@@ -69,6 +70,8 @@ type
     property Observacao: string read FObservacao write FObservacao;
     // pedido da delphi-horse-api que originou a nota; 0 = nota digitada
     property PedidoApiId: Integer read FPedidoApiId write FPedidoApiId;
+    // a API não recebeu o aviso de autorização/cancelamento; reenviado depois
+    property FaturamentoPendente: Boolean read FFaturamentoPendente write FFaturamentoPendente;
     property Itens: TObjectList<TItemNota> read FItens;
     property Pagamentos: TObjectList<TPagamentoNota> read FPagamentos;
   end;

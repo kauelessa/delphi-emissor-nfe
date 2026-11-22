@@ -24,12 +24,21 @@ type
     // pedido da API que já tem nota autorizada (0 = nenhum) e o número dessa nota
     PedidoFaturado: Integer;
     NumeroNotaFaturada: Integer;
+    // notas que o aviso de faturamento consulta; a pendência fica em Pendencias
+    Notas: TObjectList<TNota>;
+    Pendencias: TDictionary<Integer, Boolean>;
     constructor Create;
+    destructor Destroy; override;
+    /// Guarda uma cópia do cabeçalho da nota (como se estivesse no banco).
+    procedure Guardar(ANota: TNota; APendente: Boolean = False);
+    function Pendente(ANotaId: Integer): Boolean;
     procedure Salvar(ANota: TNota);
     procedure AtualizarSituacao(ANota: TNota);
     function Obter(AId: Integer): TNota;
     function Listar(const AFiltro: TFiltroNota): TObjectList<TNota>;
     function ObterFaturadaDoPedido(APedidoApiId: Integer): TNota;
+    procedure MarcarFaturamentoPendente(ANotaId: Integer; APendente: Boolean);
+    function ListarFaturamentoPendente: TObjectList<TNota>;
   end;
 
   TFakeEmitenteRepository = class(TInterfacedObject, IEmitenteRepository)
@@ -154,6 +163,58 @@ constructor TFakeNotaRepository.Create;
 begin
   inherited;
   ProximoId := 1;
+  Notas := TObjectList<TNota>.Create;
+  Pendencias := TDictionary<Integer, Boolean>.Create;
+end;
+
+destructor TFakeNotaRepository.Destroy;
+begin
+  Pendencias.Free;
+  Notas.Free;
+  inherited;
+end;
+
+function CopiarCabecalho(ANota: TNota): TNota;
+begin
+  Result := TNota.Create;
+  Result.Id := ANota.Id;
+  Result.Modelo := ANota.Modelo;
+  Result.Serie := ANota.Serie;
+  Result.Numero := ANota.Numero;
+  Result.DataEmissao := ANota.DataEmissao;
+  Result.Status := ANota.Status;
+  Result.Chave := ANota.Chave;
+  Result.PedidoApiId := ANota.PedidoApiId;
+  Result.FaturamentoPendente := ANota.FaturamentoPendente;
+end;
+
+procedure TFakeNotaRepository.Guardar(ANota: TNota; APendente: Boolean);
+begin
+  Notas.Add(CopiarCabecalho(ANota));
+  Pendencias.AddOrSetValue(ANota.Id, APendente);
+end;
+
+function TFakeNotaRepository.Pendente(ANotaId: Integer): Boolean;
+begin
+  Result := Pendencias.ContainsKey(ANotaId) and Pendencias[ANotaId];
+end;
+
+procedure TFakeNotaRepository.MarcarFaturamentoPendente(ANotaId: Integer; APendente: Boolean);
+begin
+  Pendencias.AddOrSetValue(ANotaId, APendente);
+end;
+
+function TFakeNotaRepository.ListarFaturamentoPendente: TObjectList<TNota>;
+var
+  LNota: TNota;
+begin
+  Result := TObjectList<TNota>.Create;
+  for LNota in Notas do
+    if Pendente(LNota.Id) and (LNota.PedidoApiId > 0) then
+    begin
+      Result.Add(CopiarCabecalho(LNota));
+      Result.Last.FaturamentoPendente := True;
+    end;
 end;
 
 procedure TFakeNotaRepository.Salvar(ANota: TNota);

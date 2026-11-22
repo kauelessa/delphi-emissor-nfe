@@ -13,6 +13,8 @@ type
     function Obter(AId: Integer): TNota;
     function Listar(const AFiltro: TFiltroNota): TObjectList<TNota>;
     function ObterFaturadaDoPedido(APedidoApiId: Integer): TNota;
+    procedure MarcarFaturamentoPendente(ANotaId: Integer; APendente: Boolean);
+    function ListarFaturamentoPendente: TObjectList<TNota>;
   end;
 
   TNotaRepository = class(TInterfacedObject, INotaRepository)
@@ -30,6 +32,8 @@ type
     function Obter(AId: Integer): TNota;
     function Listar(const AFiltro: TFiltroNota): TObjectList<TNota>;
     function ObterFaturadaDoPedido(APedidoApiId: Integer): TNota;
+    procedure MarcarFaturamentoPendente(ANotaId: Integer; APendente: Boolean);
+    function ListarFaturamentoPendente: TObjectList<TNota>;
   end;
 
 implementation
@@ -86,6 +90,7 @@ begin
   Result.ArquivoXml := AQry.FieldByName('ARQUIVO_XML').AsString;
   Result.Observacao := AQry.FieldByName('OBSERVACAO').AsString;
   Result.PedidoApiId := AQry.FieldByName('PEDIDO_API_ID').AsInteger;
+  Result.FaturamentoPendente := AQry.FieldByName('FATURAMENTO_PENDENTE').AsInteger = 1;
 end;
 
 const
@@ -400,6 +405,45 @@ begin
       Result := LerCabecalho(LQry);
   finally
     LQry.Free;
+  end;
+end;
+
+procedure TNotaRepository.MarcarFaturamentoPendente(ANotaId: Integer; APendente: Boolean);
+var
+  LQry: TFDQuery;
+begin
+  LQry := FConexao.NovaQuery;
+  try
+    LQry.SQL.Text := 'UPDATE NOTA SET FATURAMENTO_PENDENTE = :PENDENTE WHERE ID = :ID';
+    LQry.ParamByName('PENDENTE').AsSmallInt := Ord(APendente);
+    LQry.ParamByName('ID').AsInteger := ANotaId;
+    LQry.ExecSQL;
+  finally
+    LQry.Free;
+  end;
+end;
+
+function TNotaRepository.ListarFaturamentoPendente: TObjectList<TNota>;
+var
+  LQry: TFDQuery;
+begin
+  Result := TObjectList<TNota>.Create;
+  try
+    LQry := FConexao.NovaQuery;
+    try
+      LQry.Open(SQL_SELECT_NOTA +
+        'WHERE N.FATURAMENTO_PENDENTE = 1 AND N.PEDIDO_API_ID IS NOT NULL ORDER BY N.ID');
+      while not LQry.Eof do
+      begin
+        Result.Add(LerCabecalho(LQry));
+        LQry.Next;
+      end;
+    finally
+      LQry.Free;
+    end;
+  except
+    Result.Free;
+    raise;
   end;
 end;
 
