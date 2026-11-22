@@ -31,6 +31,7 @@ uses
   Model.PedidoApi in 'src\Models\Model.PedidoApi.pas',
   Infra.ApiPedidos in 'src\Infra\Infra.ApiPedidos.pas',
   Service.FaturamentoPedido in 'src\Services\Service.FaturamentoPedido.pas',
+  Service.AvisoFaturamento in 'src\Services\Service.AvisoFaturamento.pas',
   Service.Calculo in 'src\Services\Service.Calculo.pas',
   Service.RetornoSefaz in 'src\Services\Service.RetornoSefaz.pas',
   Service.EmissorFiscal in 'src\Services\Service.EmissorFiscal.pas',

@@ -168,6 +168,7 @@
         <DCCReference Include="src\Views\View.Justificativa.pas">
             <Form>frmJustificativa</Form>
         </DCCReference>
+        <DCCReference Include="src\Services\Service.AvisoFaturamento.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

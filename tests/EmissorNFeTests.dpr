@@ -37,6 +37,7 @@ uses
   Service.Calculo in '..\src\Services\Service.Calculo.pas',
   Service.RetornoSefaz in '..\src\Services\Service.RetornoSefaz.pas',
   Service.EmissorFiscal in '..\src\Services\Service.EmissorFiscal.pas',
+  Service.AvisoFaturamento in '..\src\Services\Service.AvisoFaturamento.pas',
   Service.Nota in '..\src\Services\Service.Nota.pas',
   Test.Fakes in 'Test.Fakes.pas',
   Test.Calculo in 'Test.Calculo.pas',
@@ -45,7 +46,8 @@ uses
   Test.NotaService in 'Test.NotaService.pas',
   Test.Migracao in 'Test.Migracao.pas',
   Test.ApiPedidos in 'Test.ApiPedidos.pas',
-  Test.FaturamentoPedido in 'Test.FaturamentoPedido.pas';
+  Test.FaturamentoPedido in 'Test.FaturamentoPedido.pas',
+  Test.AvisoFaturamento in 'Test.AvisoFaturamento.pas';
 
 var
   LRunner: ITestRunner;
