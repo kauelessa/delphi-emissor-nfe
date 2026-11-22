@@ -23,6 +23,7 @@ type
     edtQuantidade: TcxCurrencyEdit;
     btnAdicionarItem: TcxButton;
     btnRemoverItem: TcxButton;
+    btnImportarPedido: TcxButton;
     grdItens: TcxGrid;
     tvItens: TcxGridTableView;
     tvItensNumero: TcxGridColumn;
@@ -63,6 +64,7 @@ type
     liQuantidade: TdxLayoutItem;
     liAdicionarItem: TdxLayoutItem;
     liRemoverItem: TdxLayoutItem;
+    liImportarPedido: TdxLayoutItem;
     liItens: TdxLayoutItem;
     grpRodape: TdxLayoutGroup;
     grpPagamento: TdxLayoutGroup;
@@ -92,6 +94,7 @@ type
     procedure edtQuantidadeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure btnAdicionarItemClick(Sender: TObject);
     procedure btnRemoverItemClick(Sender: TObject);
+    procedure btnImportarPedidoClick(Sender: TObject);
     procedure btnAplicarDescontoClick(Sender: TObject);
     procedure btnAdicionarPagamentoClick(Sender: TObject);
     procedure btnRemoverPagamentoClick(Sender: TObject);
@@ -107,6 +110,7 @@ type
     procedure CarregarListas;
     procedure AtualizarTela;
     procedure LimparTela;
+    procedure SelecionarCliente(AClienteId: Integer);
   public
     class procedure Exibir(AModelo: TModeloNota);
   end;
@@ -117,7 +121,8 @@ implementation
 
 uses
   System.Generics.Collections, Model.Nota, Model.ItemNota, Model.Pagamento, Model.Cliente,
-  Model.Produto, Model.FormaPagamento, Infra.Documento;
+  Model.Produto, Model.FormaPagamento, Model.PedidoApi, Infra.Documento, View.PedidoApi,
+  View.VinculoProduto, View.Cliente;
 
 const
   FMT_VALOR = '#,##0.00';
@@ -142,6 +147,8 @@ begin
   Caption := 'Emissão de ' + AModelo.Descricao;
   // CPF na nota só existe na NFC-e; na NF-e o destinatário é obrigatório
   liCpfConsumidor.Visible := AModelo = TModeloNota.NFCe;
+  // pedido da API vira NF-e (venda com destinatário identificado)
+  liImportarPedido.Visible := AModelo = TModeloNota.NFe;
 end;
 
 procedure TfrmNota.FormDestroy(Sender: TObject);
@@ -270,6 +277,7 @@ begin
   // sugere o que falta pagar
   edtValorPagamento.Value := FController.ValorRestante;
   btnEmitir.Enabled := LNota.Itens.Count > 0;
+  btnImportarPedido.Enabled := LNota.Editavel and (LNota.Itens.Count = 0);
 end;
 
 procedure TfrmNota.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -309,6 +317,59 @@ begin
     raise EValidacao.Create('Selecione o item a remover');
   FController.RemoverItem(tvItens.DataController.FocusedRecordIndex);
   AtualizarTela;
+end;
+
+procedure TfrmNota.SelecionarCliente(AClienteId: Integer);
+var
+  I: Integer;
+begin
+  for I := 0 to High(FIdsClientes) do
+    if FIdsClientes[I] = AClienteId then
+    begin
+      cbCliente.ItemIndex := I;
+      Exit;
+    end;
+end;
+
+procedure TfrmNota.btnImportarPedidoClick(Sender: TObject);
+var
+  LPedidoId: Integer;
+  LImportou: Boolean;
+begin
+  LPedidoId := TfrmPedidoApi.Escolher;
+  if LPedidoId = 0 then
+    Exit;
+
+  Screen.Cursor := crHourGlass;
+  try
+    LImportou := FController.ImportarPedido(LPedidoId,
+      function(ACliente: TClienteApi): Integer
+      begin
+        Screen.Cursor := crDefault;
+        Result := TfrmCliente.CadastrarComDados(ACliente.Nome, ACliente.Documento, ACliente.Email,
+          ACliente.Telefone);
+        Screen.Cursor := crHourGlass;
+      end,
+      function(AItem: TItemPedidoApi): Integer
+      begin
+        Screen.Cursor := crDefault;
+        Result := TfrmVinculoProduto.Escolher(AItem);
+        Screen.Cursor := crHourGlass;
+      end);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  if not LImportou then
+    Exit;
+
+  // um cliente cadastrado agora ainda não está no combo
+  CarregarListas;
+  if cbFormaPagamento.Properties.Items.Count > 0 then
+    cbFormaPagamento.ItemIndex := 0;
+  SelecionarCliente(FController.Nota.ClienteId);
+  edtObservacao.Text := FController.Nota.Observacao;
+  AtualizarTela;
+  cbFormaPagamento.SetFocus;
 end;
 
 procedure TfrmNota.btnAplicarDescontoClick(Sender: TObject);

@@ -99,11 +99,15 @@ type
   private
     FController: TClienteController;
     FClienteId: Integer;
+    // aberto só para cadastrar um cliente (vindo de um pedido da API): sem a aba de lista
+    FCadastroRapido: Boolean;
+    FIdSalvo: Integer;
     procedure Pesquisar;
     function IdSelecionado: Integer;
     procedure LimparCadastro;
   public
     class procedure Exibir;
+    class function CadastrarComDados(const ANome, ADocumento, AEmail, ATelefone: string): Integer;
   end;
 
 implementation
@@ -125,6 +129,31 @@ begin
   end;
 end;
 
+class function TfrmCliente.CadastrarComDados(const ANome, ADocumento, AEmail,
+  ATelefone: string): Integer;
+var
+  LForm: TfrmCliente;
+begin
+  LForm := TfrmCliente.Create(nil);
+  try
+    LForm.FCadastroRapido := True;
+    LForm.Caption := 'Cadastrar cliente do pedido';
+    LForm.tsLista.TabVisible := False;
+    LForm.pcCliente.ActivePage := LForm.tsCadastro;
+    LForm.LimparCadastro;
+    LForm.edtNome.Text := ANome;
+    LForm.edtCpfCnpj.Text := FormatarCpfCnpj(SoNumeros(ADocumento));
+    LForm.edtEmail.Text := AEmail;
+    LForm.edtTelefone.Text := ATelefone;
+    if LForm.ShowModal = mrOk then
+      Result := LForm.FIdSalvo
+    else
+      Result := 0;
+  finally
+    LForm.Free;
+  end;
+end;
+
 procedure TfrmCliente.FormCreate(Sender: TObject);
 begin
   FController := TClienteController.Create;
@@ -138,7 +167,10 @@ end;
 
 procedure TfrmCliente.FormShow(Sender: TObject);
 begin
-  Pesquisar;
+  if FCadastroRapido then
+    ActiveControl := edtLogradouro // nome e documento já vieram da API; falta o endereço
+  else
+    Pesquisar;
 end;
 
 procedure TfrmCliente.Pesquisar;
@@ -289,8 +321,14 @@ begin
     LCliente.Endereco.UF := cbUF.Text;
     LCliente.Endereco.CEP := edtCEP.Text;
     FController.Salvar(LCliente);
+    FIdSalvo := LCliente.Id;
   finally
     LCliente.Free;
+  end;
+  if FCadastroRapido then
+  begin
+    ModalResult := mrOk;
+    Exit;
   end;
   pcCliente.ActivePage := tsLista;
   Pesquisar;
@@ -298,7 +336,10 @@ end;
 
 procedure TfrmCliente.btnCancelarClick(Sender: TObject);
 begin
-  pcCliente.ActivePage := tsLista;
+  if FCadastroRapido then
+    ModalResult := mrCancel
+  else
+    pcCliente.ActivePage := tsLista;
 end;
 
 end.

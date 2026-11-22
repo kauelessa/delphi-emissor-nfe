@@ -89,6 +89,18 @@ object frmNota: TfrmNota
       TabOrder = 6
       OnClick = btnRemoverItemClick
     end
+    object btnImportarPedido: TcxButton
+      Left = 816
+      Top = 168
+      Width = 130
+      Height = 26
+      Hint = 'Preenche a nota com um pedido da delphi-horse-api'
+      Caption = 'Importar pedido...'
+      ParentShowHint = False
+      ShowHint = True
+      TabOrder = 7
+      OnClick = btnImportarPedidoClick
+    end
     object grdItens: TcxGrid
       Left = 24
       Top = 204
@@ -423,6 +435,17 @@ object frmNota: TfrmNota
       ControlOptions.OriginalWidth = 110
       ControlOptions.ShowBorder = False
       Index = 3
+    end
+    object liImportarPedido: TdxLayoutItem
+      Parent = grpItens1
+      AlignHorz = ahRight
+      AlignVert = avBottom
+      CaptionOptions.Visible = False
+      Control = btnImportarPedido
+      ControlOptions.OriginalHeight = 26
+      ControlOptions.OriginalWidth = 130
+      ControlOptions.ShowBorder = False
+      Index = 4
     end
     object liItens: TdxLayoutItem
       Parent = grpItens

@@ -65,7 +65,7 @@ implementation
 
 uses
   System.Classes, System.JSON, System.DateUtils, System.Net.HttpClient,
-  System.Net.URLClient, Infra.Log;
+  System.Net.URLClient, System.NetConsts, Infra.Log;
 
 { leitura de JSON }
 
