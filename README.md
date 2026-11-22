@@ -4,6 +4,8 @@ Emissor de **NF-e (modelo 55)** e **NFC-e (modelo 65)** desenvolvido em **Delphi
 
 > 🚧 Projeto em desenvolvimento — faz parte do meu portfólio. Demonstra o fluxo fiscal completo que uso no dia a dia em ERPs para varejo: cadastro, emissão, transmissão, impressão e eventos da nota.
 
+> 🔗 Faz parte de um ecossistema: a **[delphi-horse-api](https://github.com/kauelessa/delphi-horse-api)** (back-end REST) guarda clientes, produtos e pedidos, o **[delphi-vcl-client](https://github.com/kauelessa/delphi-vcl-client)** (desktop) cria os pedidos, e este emissor **fatura esses pedidos como NF-e**.
+
 ## 🎯 Funcionalidades
 
 - Configuração do emitente, certificado digital (A1) e ambiente (homologação)
@@ -15,6 +17,23 @@ Emissor de **NF-e (modelo 55)** e **NFC-e (modelo 65)** desenvolvido em **Delphi
 - Contingência offline para NFC-e
 - Armazenamento e consulta dos XMLs autorizados
 - Envio do XML e do DANFE por e-mail
+- **Faturamento de pedidos da [delphi-horse-api](https://github.com/kauelessa/delphi-horse-api):** importa um pedido para a NF-e, com os dados fiscais vindos do cadastro do emissor
+
+## 🧾 Faturamento de pedidos da API
+
+Na tela de NF-e, o botão **Importar pedido** lista os pedidos da API e preenche a nota com o pedido escolhido:
+
+1. **Cliente:** procurado pelo CPF/CNPJ no cadastro do emissor. Se ainda não existir, o cadastro abre já preenchido com nome, documento, e-mail e telefone vindos da API; falta só o endereço, que a NF-e exige.
+2. **Produtos:** na primeira vez que um produto da API aparece, o emissor pergunta qual produto do seu cadastro corresponde a ele (e já sugere o de mesma descrição). O vínculo fica gravado e é usado automaticamente nos próximos pedidos.
+3. **Nota:** quantidade e preço vêm do pedido (o valor negociado na venda); NCM, CFOP e CST vêm do produto do emissor. A observação recebe o número do pedido.
+4. **Pagamento e emissão** seguem como numa nota digitada.
+
+O pedido fica gravado na nota: um pedido com NF-e autorizada não pode ser faturado de novo, e pedidos cancelados na API não podem ser escolhidos. A API não é alterada: ela cuida da parte comercial (pedido e estoque) e o emissor da parte fiscal.
+
+| | |
+|---|---|
+| ![Pedidos da API](docs/screenshots/importar-pedido.png) | ![Vínculo de produto](docs/screenshots/vinculo-produto.png) |
+| ![Cliente do pedido](docs/screenshots/cliente-pedido.png) | ![Nota com o pedido importado](docs/screenshots/nota-pedido-importado.png) |
 
 ## 🧱 Tecnologias
 
@@ -24,6 +43,7 @@ Emissor de **NF-e (modelo 55)** e **NFC-e (modelo 65)** desenvolvido em **Delphi
 | Documentos fiscais | ACBrNFe, ACBrDFe, ACBrNFeDANFeRL |
 | Banco de dados | Firebird 5.0 |
 | Acesso a dados | FireDAC |
+| Integração com a API | `System.Net.HttpClient` + `System.JSON` |
 | Relatórios | Fortes Report (DANFE via ACBr) |
 | Componentes de interface | DevExpress VCL Controls v26.1.5 |
 | Testes | DUnitX |
@@ -52,6 +72,7 @@ delphi-emissor-nfe/
 - **ACBr isolado:** toda a comunicação com a SEFAZ passa pela interface `IEmissorFiscal`. A única implementação real é `Service.ACBr.pas`, registrada no `EmissorNFe.dpr`. O resto da aplicação, e os testes, não conhecem o ACBr.
 - **Fluxo fiscal em `Service.Nota`:** validação, numeração (reservada só na primeira transmissão), envio, tratamento do `cStat`, contingência offline automática da NFC-e, cancelamento, CC-e e inutilização.
 - **Rastreabilidade:** toda operação fiscal grava o XML de envio/retorno (`xml\<CNPJ>\<AAAAMM>\`), registra um evento na tabela `NOTA_EVENTO` e escreve no log diário (`logs\`).
+- **API de pedidos isolada:** só `Infra.ApiPedidos` fala HTTP (login JWT, novo login automático quando o token expira, erros da API traduzidos em mensagens). `Service.FaturamentoPedido` resolve cliente e vínculos antes de mexer na nota: se o usuário cancelar no meio, a nota fica como estava.
 - **Cálculos em `Currency`:** rateio de desconto sem perda de centavos, ICMS (CST 00/20), PIS/COFINS e troco, todos cobertos por testes.
 
 ## ▶️ Como executar
@@ -63,6 +84,13 @@ delphi-emissor-nfe/
 5. Em `PastaSchemas`, indique a pasta dos schemas (XSD) da NF-e. O ACBr já traz a versão atual em `<pasta do ACBr>\Exemplos\ACBrDFe\Schemas\NFe`; apontar para ela mantém os schemas atualizados junto com o ACBr.
 6. Abra o `EmissorNFe.dpr` no RAD Studio (o `.dproj` é gerado na primeira abertura), compile e execute.
 7. Na tela **Emitente**, cadastre os dados da empresa dona do certificado. Mantenha `Ambiente=homologacao`.
+8. *(Opcional)* Para faturar pedidos, suba a [delphi-horse-api](https://github.com/kauelessa/delphi-horse-api) e preencha a seção `[Api]` do `config.ini`:
+
+   | Chave | Padrão | Descrição |
+   |---|---|---|
+   | `Url` | `http://localhost:9000` | endereço da API |
+   | `Usuario` / `Senha` | — | usuário da API (em desenvolvimento, o criado pelo seed da API) |
+   | `TimeoutSegundos` | `15` | tempo máximo de cada chamada |
 
 ### Migrações
 
@@ -89,7 +117,7 @@ Script já aplicado nunca roda de novo, então mudança no banco vai sempre num 
 
 ### Testes
 
-Abra `tests/EmissorNFeTests.dpr` e execute (console DUnitX). Os testes rodam sem banco, sem certificado e sem ACBr.
+Abra `tests/EmissorNFeTests.dpr` e execute (console DUnitX). Os testes rodam sem banco, sem certificado, sem ACBr e sem a API no ar.
 
 > ℹ️ O DevExpress é uma biblioteca comercial: é necessário ter uma licença válida (ou a versão de avaliação) para abrir os forms e compilar o projeto.
 
@@ -104,6 +132,7 @@ Abra `tests/EmissorNFeTests.dpr` e execute (console DUnitX). Os testes rodam sem
 - [ ] Cancelamento, CC-e e inutilização
 - [ ] Contingência offline (NFC-e)
 - [ ] Envio por e-mail e consulta de XMLs
+- [x] Faturamento de pedidos da delphi-horse-api (NF-e)
 
 ## 👤 Autor
 
