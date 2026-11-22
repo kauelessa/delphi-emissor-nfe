@@ -8,7 +8,7 @@ Emissor de NF-e (modelo 55) e NFC-e (modelo 65) em Delphi VCL, usando os compone
 
 ## Ambiente
 
-- Delphi / RAD Studio (Community Edition ou superior). A compilação e o design de forms são feitos no RAD Studio; o Claude Code edita `.pas`, `.dpr`, scripts SQL e documentação pelo VS Code.
+- Delphi / RAD Studio (Community Edition ou superior). A compilação e o design de forms são feitos no RAD Studio; o Claude Code edita `.pas`, `.dpr`, `.dproj`, `.dfm`, `.res`, scripts SQL e documentação pelo VS Code.
 - Se uma unit nova precisar ser adicionada ao projeto, registre-a no `uses` do `.dpr` e no `.dproj`. Quando um form precisar de componentes novos, descreva quais adicionar e com quais nomes.
 - Componentes ACBr instalados na IDE pelo instalador oficial (não versionar fontes do ACBr no repositório).
 - Banco: Firebird 5.0 via FireDAC. Scripts SQL ficam em `database/`, numerados (`001_create_tables.sql`, `002_...`). Migrações automáticas: veja a seção "Banco e migrações".
