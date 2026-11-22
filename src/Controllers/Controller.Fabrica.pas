@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, Service.EmissorFiscal, Service.Nota, Service.Emitente, Service.Cliente,
-  Service.Produto, Service.FormaPagamento;
+  Service.Produto, Service.FormaPagamento, Service.FaturamentoPedido;
 
 type
   TFabrica = class
@@ -20,6 +20,7 @@ type
     class function ClienteService: IClienteService;
     class function ProdutoService: IProdutoService;
     class function FormaPagamentoService: IFormaPagamentoService;
+    class function FaturamentoPedidoService: IFaturamentoPedidoService;
   end;
 
 implementation
@@ -27,7 +28,7 @@ implementation
 uses
   Infra.Conexao, Infra.Config, Infra.Log, Infra.ArquivoXml, Repository.Nota,
   Repository.Emitente, Repository.Cliente, Repository.Produto, Repository.FormaPagamento,
-  Repository.EventoFiscal;
+  Repository.EventoFiscal, Repository.VinculoProduto, Infra.ApiPedidos;
 
 class procedure TFabrica.RegistrarEmissor(const ACriar: TFunc<IEmissorFiscal>);
 begin
@@ -69,6 +70,19 @@ end;
 class function TFabrica.FormaPagamentoService: IFormaPagamentoService;
 begin
   Result := TFormaPagamentoService.Create(TFormaPagamentoRepository.Create(Conexao));
+end;
+
+class function TFabrica.FaturamentoPedidoService: IFaturamentoPedidoService;
+begin
+  Result := TFaturamentoPedidoService.Create(
+    TPedidoApiHttp.Create(TNetHttpTransporte.Create(Config.Api.TimeoutMs), Config.Api.Url,
+      Config.Api.Usuario, Config.Api.Senha),
+    NotaService,
+    TNotaRepository.Create(Conexao),
+    TClienteRepository.Create(Conexao),
+    TProdutoRepository.Create(Conexao),
+    TVinculoProdutoRepository.Create(Conexao),
+    Log);
 end;
 
 end.

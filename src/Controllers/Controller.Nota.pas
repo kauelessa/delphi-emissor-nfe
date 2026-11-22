@@ -6,7 +6,7 @@ interface
 
 uses
   System.Generics.Collections, Model.Tipos, Model.Nota, Model.Cliente, Model.Produto,
-  Model.FormaPagamento, Service.Nota;
+  Model.FormaPagamento, Service.Nota, Service.FaturamentoPedido;
 
 type
   TNotaController = class
@@ -35,6 +35,9 @@ type
 
     function Emitir: TResultadoOperacao;
     procedure Imprimir;
+
+    function ImportarPedido(APedidoId: Integer; const ACadastrarCliente: TCadastrarCliente;
+      const AEscolherProduto: TEscolherProduto): Boolean;
 
     property Nota: TNota read FNota;
   end;
@@ -124,6 +127,13 @@ end;
 procedure TNotaController.RemoverPagamento(AIndice: Integer);
 begin
   FService.RemoverPagamento(FNota, AIndice);
+end;
+
+function TNotaController.ImportarPedido(APedidoId: Integer;
+  const ACadastrarCliente: TCadastrarCliente; const AEscolherProduto: TEscolherProduto): Boolean;
+begin
+  Result := TFabrica.FaturamentoPedidoService.Importar(FNota, APedidoId, ACadastrarCliente,
+    AEscolherProduto);
 end;
 
 function TNotaController.ValorRestante: Currency;

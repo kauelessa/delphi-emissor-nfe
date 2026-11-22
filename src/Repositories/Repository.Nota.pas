@@ -12,6 +12,7 @@ type
     procedure AtualizarSituacao(ANota: TNota);
     function Obter(AId: Integer): TNota;
     function Listar(const AFiltro: TFiltroNota): TObjectList<TNota>;
+    function ObterFaturadaDoPedido(APedidoApiId: Integer): TNota;
   end;
 
   TNotaRepository = class(TInterfacedObject, INotaRepository)
@@ -28,6 +29,7 @@ type
     procedure AtualizarSituacao(ANota: TNota);
     function Obter(AId: Integer): TNota;
     function Listar(const AFiltro: TFiltroNota): TObjectList<TNota>;
+    function ObterFaturadaDoPedido(APedidoApiId: Integer): TNota;
   end;
 
 implementation
@@ -83,6 +85,7 @@ begin
   Result.ValorTroco := AQry.FieldByName('VALOR_TROCO').AsCurrency;
   Result.ArquivoXml := AQry.FieldByName('ARQUIVO_XML').AsString;
   Result.Observacao := AQry.FieldByName('OBSERVACAO').AsString;
+  Result.PedidoApiId := AQry.FieldByName('PEDIDO_API_ID').AsInteger;
 end;
 
 const
@@ -123,11 +126,11 @@ begin
         'INSERT INTO NOTA (MODELO, SERIE, NUMERO, DATA_EMISSAO, NATUREZA_OPERACAO, CLIENTE_ID, ' +
         '  CPF_CONSUMIDOR, STATUS, CONTINGENCIA, CHAVE, PROTOCOLO, CSTAT, MOTIVO, VALOR_PRODUTOS, ' +
         '  VALOR_DESCONTO, BASE_ICMS, VALOR_ICMS, VALOR_PIS, VALOR_COFINS, VALOR_TOTAL, ' +
-        '  VALOR_TROCO, ARQUIVO_XML, OBSERVACAO) ' +
+        '  VALOR_TROCO, ARQUIVO_XML, OBSERVACAO, PEDIDO_API_ID) ' +
         'VALUES (:MODELO, :SERIE, :NUMERO, :DATA_EMISSAO, :NATUREZA_OPERACAO, :CLIENTE_ID, ' +
         '  :CPF_CONSUMIDOR, :STATUS, :CONTINGENCIA, :CHAVE, :PROTOCOLO, :CSTAT, :MOTIVO, ' +
         '  :VALOR_PRODUTOS, :VALOR_DESCONTO, :BASE_ICMS, :VALOR_ICMS, :VALOR_PIS, :VALOR_COFINS, ' +
-        '  :VALOR_TOTAL, :VALOR_TROCO, :ARQUIVO_XML, :OBSERVACAO) RETURNING ID'
+        '  :VALOR_TOTAL, :VALOR_TROCO, :ARQUIVO_XML, :OBSERVACAO, :PEDIDO_API_ID) RETURNING ID'
     else
       LQry.SQL.Text :=
         'UPDATE NOTA SET MODELO = :MODELO, SERIE = :SERIE, NUMERO = :NUMERO, ' +
@@ -137,7 +140,7 @@ begin
         '  MOTIVO = :MOTIVO, VALOR_PRODUTOS = :VALOR_PRODUTOS, VALOR_DESCONTO = :VALOR_DESCONTO, ' +
         '  BASE_ICMS = :BASE_ICMS, VALOR_ICMS = :VALOR_ICMS, VALOR_PIS = :VALOR_PIS, ' +
         '  VALOR_COFINS = :VALOR_COFINS, VALOR_TOTAL = :VALOR_TOTAL, VALOR_TROCO = :VALOR_TROCO, ' +
-        '  ARQUIVO_XML = :ARQUIVO_XML, OBSERVACAO = :OBSERVACAO ' +
+        '  ARQUIVO_XML = :ARQUIVO_XML, OBSERVACAO = :OBSERVACAO, PEDIDO_API_ID = :PEDIDO_API_ID ' +
         'WHERE ID = :ID RETURNING ID';
 
     LQry.ParamByName('MODELO').AsInteger := ANota.Modelo.Codigo;
@@ -163,6 +166,7 @@ begin
     LQry.ParamByName('VALOR_TROCO').AsCurrency := ANota.ValorTroco;
     ParamTextoOuNulo(LQry.ParamByName('ARQUIVO_XML'), ANota.ArquivoXml);
     ParamTextoOuNulo(LQry.ParamByName('OBSERVACAO'), ANota.Observacao);
+    ParamInteiroOuNulo(LQry.ParamByName('PEDIDO_API_ID'), ANota.PedidoApiId);
     if ANota.Id > 0 then
       LQry.ParamByName('ID').AsInteger := ANota.Id;
 
@@ -376,6 +380,26 @@ begin
   except
     Result.Free;
     raise;
+  end;
+end;
+
+function TNotaRepository.ObterFaturadaDoPedido(APedidoApiId: Integer): TNota;
+var
+  LQry: TFDQuery;
+begin
+  // só autorizada ou em contingência conta como faturada; rejeitada/cancelada libera o pedido
+  LQry := FConexao.NovaQuery;
+  try
+    LQry.Open(SQL_SELECT_NOTA +
+      'WHERE N.PEDIDO_API_ID = :PEDIDO AND N.STATUS IN (:AUTORIZADA, :CONTINGENCIA) ' +
+      'ORDER BY N.ID DESC ROWS 1',
+      [APedidoApiId, Ord(TStatusNota.Autorizada), Ord(TStatusNota.Contingencia)]);
+    if LQry.IsEmpty then
+      Result := nil
+    else
+      Result := LerCabecalho(LQry);
+  finally
+    LQry.Free;
   end;
 end;
 

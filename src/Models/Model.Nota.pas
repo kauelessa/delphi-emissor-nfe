@@ -33,6 +33,7 @@ type
     FValorTroco: Currency;
     FArquivoXml: string;
     FObservacao: string;
+    FPedidoApiId: Integer;
     FItens: TObjectList<TItemNota>;
     FPagamentos: TObjectList<TPagamentoNota>;
   public
@@ -66,6 +67,8 @@ type
     property ValorTroco: Currency read FValorTroco write FValorTroco;
     property ArquivoXml: string read FArquivoXml write FArquivoXml;
     property Observacao: string read FObservacao write FObservacao;
+    // pedido da delphi-horse-api que originou a nota; 0 = nota digitada
+    property PedidoApiId: Integer read FPedidoApiId write FPedidoApiId;
     property Itens: TObjectList<TItemNota> read FItens;
     property Pagamentos: TObjectList<TPagamentoNota> read FPagamentos;
   end;

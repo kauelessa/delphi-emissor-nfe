@@ -10,6 +10,7 @@ type
     ['{B4D2A1E3-9C8F-4F66-8D32-2E3F4A5B6C71}']
     function Listar(const AFiltro: string): TObjectList<TCliente>;
     function Obter(AId: Integer): TCliente;
+    function ObterPorDocumento(const ADocumento: string): TCliente;
     procedure Salvar(ACliente: TCliente);
     procedure Inativar(AId: Integer);
   end;
@@ -21,6 +22,7 @@ type
     constructor Create(AConexao: IConexao);
     function Listar(const AFiltro: string): TObjectList<TCliente>;
     function Obter(AId: Integer): TCliente;
+    function ObterPorDocumento(const ADocumento: string): TCliente;
     procedure Salvar(ACliente: TCliente);
     procedure Inativar(AId: Integer);
   end;
@@ -94,6 +96,22 @@ begin
   except
     Result.Free;
     raise;
+  end;
+end;
+
+function TClienteRepository.ObterPorDocumento(const ADocumento: string): TCliente;
+var
+  LQry: TFDQuery;
+begin
+  LQry := FConexao.NovaQuery;
+  try
+    LQry.Open('SELECT * FROM CLIENTE WHERE CPF_CNPJ = :DOC AND ATIVO = TRUE ORDER BY ID ROWS 1', [ADocumento]);
+    if LQry.IsEmpty then
+      Result := nil
+    else
+      Result := LerCliente(LQry);
+  finally
+    LQry.Free;
   end;
 end;
 

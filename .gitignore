@@ -94,3 +94,5 @@ logs/
 Win32/
 Win64/
 dunitx-results.xml
+
+.superpowers/

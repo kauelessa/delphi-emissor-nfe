@@ -27,6 +27,8 @@ type
     function Listar(const AFiltro: TFiltroNota): TObjectList<TNota>;
 
     procedure AdicionarItem(ANota: TNota; AProdutoId: Integer; AQuantidade: Currency);
+    // preço vindo de fora do cadastro (ex.: o preço negociado num pedido da API)
+    procedure AdicionarItemComPreco(ANota: TNota; AProdutoId: Integer; AQuantidade, AValorUnitario: Currency);
     procedure AdicionarItemPorCodigo(ANota: TNota; const ACodigo: string; AQuantidade: Currency);
     procedure RemoverItem(ANota: TNota; AIndice: Integer);
     procedure AplicarDesconto(ANota: TNota; AValor: Currency);
@@ -66,6 +68,8 @@ type
       const ARetorno: TRetornoFiscal; const ATexto, AArquivo: string; ASucesso: Boolean;
       ASequencia: Integer = 1);
     procedure RecalcularDesconto(ANota: TNota);
+    procedure IncluirItem(ANota: TNota; AProdutoId: Integer; AQuantidade: Currency;
+      AUsarPreco: Boolean; AValorUnitario: Currency);
     function ProcessarRetornoEmissao(ANota: TNota; const ACnpj: string;
       const ARetorno: TRetornoFiscal): TResultadoOperacao;
     function EmitirContingencia(ANota: TNota; AEmitente: TEmitente;
@@ -83,6 +87,8 @@ type
     function Listar(const AFiltro: TFiltroNota): TObjectList<TNota>;
 
     procedure AdicionarItem(ANota: TNota; AProdutoId: Integer; AQuantidade: Currency);
+    // preço vindo de fora do cadastro (ex.: o preço negociado num pedido da API)
+    procedure AdicionarItemComPreco(ANota: TNota; AProdutoId: Integer; AQuantidade, AValorUnitario: Currency);
     procedure AdicionarItemPorCodigo(ANota: TNota; const ACodigo: string; AQuantidade: Currency);
     procedure RemoverItem(ANota: TNota; AIndice: Integer);
     procedure AplicarDesconto(ANota: TNota; AValor: Currency);
@@ -234,6 +240,20 @@ begin
 end;
 
 procedure TNotaService.AdicionarItem(ANota: TNota; AProdutoId: Integer; AQuantidade: Currency);
+begin
+  IncluirItem(ANota, AProdutoId, AQuantidade, False, 0);
+end;
+
+procedure TNotaService.AdicionarItemComPreco(ANota: TNota; AProdutoId: Integer;
+  AQuantidade, AValorUnitario: Currency);
+begin
+  if AValorUnitario <= 0 then
+    raise EValidacao.Create('Informe um valor unitário maior que zero.');
+  IncluirItem(ANota, AProdutoId, AQuantidade, True, AValorUnitario);
+end;
+
+procedure TNotaService.IncluirItem(ANota: TNota; AProdutoId: Integer; AQuantidade: Currency;
+  AUsarPreco: Boolean; AValorUnitario: Currency);
 var
   LProduto: TProduto;
   LItem: TItemNota;
@@ -255,6 +275,8 @@ begin
     LItem := TItemNota.Create;
     LItem.CopiarProduto(LProduto);
     LItem.Quantidade := AQuantidade;
+    if AUsarPreco then
+      LItem.ValorUnitario := AValorUnitario;
     ANota.Itens.Add(LItem);
   finally
     LProduto.Free;

@@ -27,6 +27,10 @@ uses
   Repository.FormaPagamento in 'src\Repositories\Repository.FormaPagamento.pas',
   Repository.Nota in 'src\Repositories\Repository.Nota.pas',
   Repository.EventoFiscal in 'src\Repositories\Repository.EventoFiscal.pas',
+  Repository.VinculoProduto in 'src\Repositories\Repository.VinculoProduto.pas',
+  Model.PedidoApi in 'src\Models\Model.PedidoApi.pas',
+  Infra.ApiPedidos in 'src\Infra\Infra.ApiPedidos.pas',
+  Service.FaturamentoPedido in 'src\Services\Service.FaturamentoPedido.pas',
   Service.Calculo in 'src\Services\Service.Calculo.pas',
   Service.RetornoSefaz in 'src\Services\Service.RetornoSefaz.pas',
   Service.EmissorFiscal in 'src\Services\Service.EmissorFiscal.pas',
@@ -44,6 +48,7 @@ uses
   Controller.FormaPagamento in 'src\Controllers\Controller.FormaPagamento.pas',
   Controller.Nota in 'src\Controllers\Controller.Nota.pas',
   Controller.ConsultaNota in 'src\Controllers\Controller.ConsultaNota.pas',
+  Controller.PedidoApi in 'src\Controllers\Controller.PedidoApi.pas',
   View.Principal in 'src\Views\View.Principal.pas' {frmPrincipal},
   View.Nota in 'src\Views\View.Nota.pas' {frmNota},
   View.ConsultaNota in 'src\Views\View.ConsultaNota.pas' {frmConsultaNota},
@@ -52,7 +57,9 @@ uses
   View.FormaPagamento in 'src\Views\View.FormaPagamento.pas' {frmFormaPagamento},
   View.Emitente in 'src\Views\View.Emitente.pas' {frmEmitente},
   View.Inutilizacao in 'src\Views\View.Inutilizacao.pas' {frmInutilizacao},
-  View.Justificativa in 'src\Views\View.Justificativa.pas' {frmJustificativa};
+  View.Justificativa in 'src\Views\View.Justificativa.pas' {frmJustificativa},
+  View.PedidoApi in 'src\Views\View.PedidoApi.pas' {frmPedidoApi},
+  View.VinculoProduto in 'src\Views\View.VinculoProduto.pas' {frmVinculoProduto};
 
 {$R *.res}
 
