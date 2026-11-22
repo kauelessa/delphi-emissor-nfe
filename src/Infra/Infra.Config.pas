@@ -60,6 +60,14 @@ type
     NomeRemetente: string;
   end;
 
+  // delphi-horse-api, de onde vêm os pedidos faturados no emissor
+  TConfigApi = record
+    Url: string;
+    Usuario: string;
+    Senha: string;
+    TimeoutMs: Integer;
+  end;
+
   TConfig = class
   private
     FArquivo: string;
@@ -68,6 +76,7 @@ type
     FEmail: TConfigEmail;
     FMigracao: TConfigMigracao;
     FResponsavelTecnico: TConfigResponsavelTecnico;
+    FApi: TConfigApi;
     FPastaLog: string;
     class function CaminhoAbsoluto(const ACaminho: string): string; static;
   public
@@ -80,6 +89,7 @@ type
     property Email: TConfigEmail read FEmail;
     property Migracao: TConfigMigracao read FMigracao;
     property ResponsavelTecnico: TConfigResponsavelTecnico read FResponsavelTecnico;
+    property Api: TConfigApi read FApi;
     property PastaLog: string read FPastaLog;
   end;
 
@@ -179,6 +189,11 @@ begin
     FMigracao.Executar := LIni.ReadBool('Migracao', 'Executar', True);
     FMigracao.ExecutarSeeds := LIni.ReadBool('Migracao', 'ExecutarSeeds', False);
     FMigracao.Pasta := CaminhoAbsoluto(LIni.ReadString('Migracao', 'Pasta', '.\database'));
+
+    FApi.Url := LIni.ReadString('Api', 'Url', 'http://localhost:9000');
+    FApi.Usuario := LIni.ReadString('Api', 'Usuario', '');
+    FApi.Senha := LIni.ReadString('Api', 'Senha', '');
+    FApi.TimeoutMs := LIni.ReadInteger('Api', 'TimeoutSegundos', 15) * 1000;
 
     FPastaLog := CaminhoAbsoluto(LIni.ReadString('Log', 'Pasta', '.\logs'));
   finally
