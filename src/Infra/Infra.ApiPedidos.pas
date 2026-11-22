@@ -1,14 +1,19 @@
 ﻿unit Infra.ApiPedidos;
 
 {
-  Leitura de pedidos e clientes da delphi-horse-api, para faturar os pedidos no emissor.
+  Conversa com a delphi-horse-api: lê pedidos e clientes para faturar no emissor e
+  avisa a API quando a NF-e de um pedido é autorizada ou cancelada.
 
   É a única unit do emissor que fala HTTP. O transporte (IHttpTransporte) é separado
   da lógica da API para os testes trocarem a rede por respostas prontas.
 
   Autenticação: login na primeira chamada (POST /auth/login) e o token JWT fica em
-  memória. A API não renova tokens; quando um expira (401), faz um novo login e repete
-  a chamada UMA vez. Um segundo 401 vira erro.
+  memória. Quando um expira (401), faz um novo login e repete a chamada UMA vez.
+  Um segundo 401 vira erro.
+
+  Erros: EApiIndisponivel = vale tentar de novo depois (sem conexão, 5xx, login
+  recusado); EApiPedidoRecusado = a API julgou o pedido (400/404/409/422) e repetir
+  não muda nada.
 }
 
 interface
@@ -18,6 +23,8 @@ uses
 
 type
   EApiPedidos = class(Exception);
+  EApiIndisponivel = class(EApiPedidos);
+  EApiPedidoRecusado = class(EApiPedidos);
 
   THttpResposta = record
     Status: Integer;
@@ -42,6 +49,8 @@ type
     function Listar(APagina, ALimite: Integer): TPaginaPedidosApi;
     function Obter(AId: Integer): TPedidoApi;
     function ObterCliente(AId: Integer): TClienteApi;
+    procedure Faturar(APedidoId, ANumero, ASerie: Integer; const AChave: string; AAutorizadaEm: TDateTime);
+    procedure RemoverFaturamento(APedidoId: Integer);
   end;
 
   TPedidoApiHttp = class(TInterfacedObject, IPedidoApi)
@@ -53,12 +62,14 @@ type
     FToken: string;
     function Chamar(const AMetodo, AUrl, ACorpo, AToken: string): THttpResposta;
     procedure Logar;
-    function Get(const ARota: string): string;
+    function Enviar(const AMetodo, ARota: string; const ACorpo: string = ''): string;
   public
     constructor Create(ATransporte: IHttpTransporte; const AUrl, AUsuario, ASenha: string);
     function Listar(APagina, ALimite: Integer): TPaginaPedidosApi;
     function Obter(AId: Integer): TPedidoApi;
     function ObterCliente(AId: Integer): TClienteApi;
+    procedure Faturar(APedidoId, ANumero, ASerie: Integer; const AChave: string; AAutorizadaEm: TDateTime);
+    procedure RemoverFaturamento(APedidoId: Integer);
   end;
 
 implementation
@@ -180,9 +191,12 @@ begin
 
     if ACorpo <> '' then
       LCorpo := TStringStream.Create(ACorpo, TEncoding.UTF8);
-    // só GET e POST: o emissor apenas lê pedidos (o POST é o login)
     if AMetodo = 'POST' then
       LResposta := LCliente.Post(AUrl, LCorpo, nil, LCabecalhos)
+    else if AMetodo = 'PATCH' then
+      LResposta := LCliente.Patch(AUrl, LCorpo, nil, LCabecalhos)
+    else if AMetodo = 'DELETE' then
+      LResposta := LCliente.Delete(AUrl, nil, LCabecalhos)
     else
       LResposta := LCliente.Get(AUrl, nil, LCabecalhos);
     Result.Status := LResposta.StatusCode;
@@ -217,7 +231,7 @@ begin
     on E: ENetException do
     begin
       Log.Erro(Format('API de pedidos: %s %s falhou (%s)', [AMetodo, AUrl, E.Message]));
-      raise EApiPedidos.CreateFmt('Não foi possível conectar à API em %s.', [FUrl]);
+      raise EApiIndisponivel.CreateFmt('Não foi possível conectar à API em %s.', [FUrl]);
     end;
   end;
 
@@ -242,7 +256,13 @@ begin
     end;
     if LErro = '' then
       LErro := Format('A API respondeu %d.', [Result.Status]);
-    raise EApiPedidos.Create(LErro);
+    case Result.Status of
+      400, 404, 409, 422: raise EApiPedidoRecusado.Create(LErro);
+    else
+      if Result.Status >= 500 then
+        raise EApiIndisponivel.Create(LErro);
+      raise EApiPedidos.Create(LErro);
+    end;
   end;
 end;
 
@@ -258,8 +278,9 @@ begin
   finally
     LCorpo.Free;
   end;
+  // credencial errada se corrige no config.ini; para o aviso de faturamento vale tentar depois
   if LResposta.Status = 401 then
-    raise EApiPedidos.Create('Usuário ou senha da API inválidos. Confira a seção [Api] do config.ini.');
+    raise EApiIndisponivel.Create('Usuário ou senha da API inválidos. Confira a seção [Api] do config.ini.');
 
   LJson := ParseObjeto(LResposta.Corpo);
   try
@@ -269,18 +290,18 @@ begin
   end;
 end;
 
-function TPedidoApiHttp.Get(const ARota: string): string;
+function TPedidoApiHttp.Enviar(const AMetodo, ARota, ACorpo: string): string;
 var
   LResposta: THttpResposta;
 begin
   if FToken = '' then
     Logar;
-  LResposta := Chamar('GET', FUrl + ARota, '', FToken);
+  LResposta := Chamar(AMetodo, FUrl + ARota, ACorpo, FToken);
   if LResposta.Status = 401 then
   begin
     // token expirado: um novo login e uma nova tentativa
     Logar;
-    LResposta := Chamar('GET', FUrl + ARota, '', FToken);
+    LResposta := Chamar(AMetodo, FUrl + ARota, ACorpo, FToken);
     if LResposta.Status = 401 then
       raise EApiPedidos.Create('A API recusou o acesso mesmo depois de um novo login.');
   end;
@@ -293,7 +314,7 @@ var
   LDados: TJSONArray;
   LElemento: TJSONValue;
 begin
-  LJson := ParseObjeto(Get(Format('/pedidos?pagina=%d&limite=%d', [APagina, ALimite])));
+  LJson := ParseObjeto(Enviar('GET', Format('/pedidos?pagina=%d&limite=%d', [APagina, ALimite])));
   try
     Result := TPaginaPedidosApi.Create;
     try
@@ -315,7 +336,7 @@ function TPedidoApiHttp.Obter(AId: Integer): TPedidoApi;
 var
   LJson: TJSONObject;
 begin
-  LJson := ParseObjeto(Get('/pedidos/' + AId.ToString));
+  LJson := ParseObjeto(Enviar('GET', '/pedidos/' + AId.ToString));
   try
     Result := LerPedido(LJson);
   finally
@@ -327,7 +348,7 @@ function TPedidoApiHttp.ObterCliente(AId: Integer): TClienteApi;
 var
   LJson: TJSONObject;
 begin
-  LJson := ParseObjeto(Get('/clientes/' + AId.ToString));
+  LJson := ParseObjeto(Enviar('GET', '/clientes/' + AId.ToString));
   try
     Result := TClienteApi.Create;
     Result.Id := Inteiro(LJson, 'id');
@@ -338,6 +359,28 @@ begin
   finally
     LJson.Free;
   end;
+end;
+
+procedure TPedidoApiHttp.Faturar(APedidoId, ANumero, ASerie: Integer; const AChave: string;
+  AAutorizadaEm: TDateTime);
+var
+  LCorpo: TJSONObject;
+begin
+  LCorpo := TJSONObject.Create;
+  try
+    LCorpo.AddPair('numero', TJSONNumber.Create(ANumero))
+      .AddPair('serie', TJSONNumber.Create(ASerie))
+      .AddPair('chave', AChave)
+      .AddPair('autorizadaEm', DateToISO8601(AAutorizadaEm, False));
+    Enviar('PATCH', Format('/pedidos/%d/faturamento', [APedidoId]), LCorpo.ToJSON);
+  finally
+    LCorpo.Free;
+  end;
+end;
+
+procedure TPedidoApiHttp.RemoverFaturamento(APedidoId: Integer);
+begin
+  Enviar('DELETE', Format('/pedidos/%d/faturamento', [APedidoId]));
 end;
 
 end.

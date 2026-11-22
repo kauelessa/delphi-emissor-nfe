@@ -24,6 +24,8 @@ type
     function Listar(APagina, ALimite: Integer): TPaginaPedidosApi;
     function Obter(AId: Integer): TPedidoApi;
     function ObterCliente(AId: Integer): TClienteApi;
+    procedure Faturar(APedidoId, ANumero, ASerie: Integer; const AChave: string; AAutorizadaEm: TDateTime);
+    procedure RemoverFaturamento(APedidoId: Integer);
   end;
 
   [TestFixture]
@@ -144,6 +146,15 @@ begin
     LItem.ValorTotal := LFake.Preco * LFake.Quantidade;
     Result.Itens.Add(LItem);
   end;
+end;
+
+procedure TPedidoApiFake.Faturar(APedidoId, ANumero, ASerie: Integer; const AChave: string;
+  AAutorizadaEm: TDateTime);
+begin
+end;
+
+procedure TPedidoApiFake.RemoverFaturamento(APedidoId: Integer);
+begin
 end;
 
 function TPedidoApiFake.ObterCliente(AId: Integer): TClienteApi;

@@ -55,12 +55,28 @@ type
     procedure ObterCliente_LeDados;
     [Test]
     procedure FalhaDeConexao_MensagemComUrl;
+    [Test]
+    procedure Faturar_EnviaPatchComDadosDaNota;
+    [Test]
+    procedure RemoverFaturamento_EnviaDelete;
+    [Test]
+    procedure Faturar_401_RelogaERepete;
+    [Test]
+    procedure Faturar_409_LevantaRecusadoComMensagemDaApi;
+    [Test]
+    procedure Faturar_500_LevantaIndisponivel;
+    [Test]
+    procedure FalhaDeConexao_LevantaIndisponivel;
   end;
 
 implementation
 
+uses
+  System.JSON, System.DateUtils;
+
 const
   URL = 'http://localhost:9000';
+  CHAVE_44 = '35261111222333000181550010000001231000001230';
   PEDIDO_12 =
     '{"id":12,"cliente":{"id":3,"nome":"Maria Souza"},"data":"2026-11-20T10:30:00",' +
     '"status":"ABERTO","valorTotal":559.8,"itens":[{"id":1,"produtoId":7,' +
@@ -243,7 +259,7 @@ begin
     procedure
     begin
       FApi.Obter(99).Free;
-    end, EApiPedidos, 'Pedido 99 não encontrado.');
+    end, EApiPedidoRecusado, 'Pedido 99 não encontrado.');
 end;
 
 procedure TTestApiPedidos.ErroSemCorpo_MensagemComStatus;
@@ -254,7 +270,7 @@ begin
     procedure
     begin
       FApi.Obter(12).Free;
-    end, EApiPedidos, 'A API respondeu 500.');
+    end, EApiIndisponivel, 'A API respondeu 500.');
 end;
 
 procedure TTestApiPedidos.Listar_LePagina;
@@ -306,7 +322,85 @@ begin
     procedure
     begin
       FApi.Obter(12).Free;
-    end, EApiPedidos, 'Não foi possível conectar à API em http://localhost:9000.');
+    end, EApiIndisponivel, 'Não foi possível conectar à API em http://localhost:9000.');
+end;
+
+procedure TTestApiPedidos.Faturar_EnviaPatchComDadosDaNota;
+var
+  LData: TDateTime;
+  LCorpo: TJSONObject;
+begin
+  LData := EncodeDateTime(2026, 11, 22, 14, 5, 0, 0);
+  ResponderLogin;
+  FTransporte.Responder(200, PEDIDO_12);
+  FApi.Faturar(12, 123, 1, CHAVE_44, LData);
+
+  Assert.AreEqual(2, FTransporte.Chamadas.Count);
+  Assert.AreEqual('PATCH', FTransporte.Chamadas[1].Metodo);
+  Assert.AreEqual(URL + '/pedidos/12/faturamento', FTransporte.Chamadas[1].Url);
+  Assert.AreEqual('tk1', FTransporte.Chamadas[1].Token);
+  LCorpo := TJSONObject.ParseJSONValue(FTransporte.Chamadas[1].Corpo) as TJSONObject;
+  try
+    Assert.AreEqual(123, LCorpo.GetValue<Integer>('numero'));
+    Assert.AreEqual(1, LCorpo.GetValue<Integer>('serie'));
+    Assert.AreEqual(CHAVE_44, LCorpo.GetValue<string>('chave'));
+    Assert.AreEqual(DateToISO8601(LData, False), LCorpo.GetValue<string>('autorizadaEm'));
+  finally
+    LCorpo.Free;
+  end;
+end;
+
+procedure TTestApiPedidos.RemoverFaturamento_EnviaDelete;
+begin
+  ResponderLogin;
+  FTransporte.Responder(200, PEDIDO_12);
+  FApi.RemoverFaturamento(12);
+  Assert.AreEqual('DELETE', FTransporte.Chamadas[1].Metodo);
+  Assert.AreEqual(URL + '/pedidos/12/faturamento', FTransporte.Chamadas[1].Url);
+end;
+
+procedure TTestApiPedidos.Faturar_401_RelogaERepete;
+begin
+  ResponderLogin('velho');
+  FTransporte.Responder(401, '{"erro":"Token expirado."}');
+  ResponderLogin('novo');
+  FTransporte.Responder(200, PEDIDO_12);
+  FApi.Faturar(12, 123, 1, CHAVE_44, Now);
+  Assert.AreEqual(4, FTransporte.Chamadas.Count);
+  Assert.AreEqual('PATCH', FTransporte.Chamadas[3].Metodo);
+  Assert.AreEqual('novo', FTransporte.Chamadas[3].Token);
+end;
+
+procedure TTestApiPedidos.Faturar_409_LevantaRecusadoComMensagemDaApi;
+begin
+  ResponderLogin;
+  FTransporte.Responder(409, '{"erro":"Pedido cancelado não pode ser faturado."}');
+  Assert.WillRaiseWithMessage(
+    procedure
+    begin
+      FApi.Faturar(12, 123, 1, CHAVE_44, Now);
+    end, EApiPedidoRecusado, 'Pedido cancelado não pode ser faturado.');
+end;
+
+procedure TTestApiPedidos.Faturar_500_LevantaIndisponivel;
+begin
+  ResponderLogin;
+  FTransporte.Responder(500, '{"erro":"Erro interno."}');
+  Assert.WillRaise(
+    procedure
+    begin
+      FApi.Faturar(12, 123, 1, CHAVE_44, Now);
+    end, EApiIndisponivel);
+end;
+
+procedure TTestApiPedidos.FalhaDeConexao_LevantaIndisponivel;
+begin
+  FTransporte.Responder(0, '');
+  Assert.WillRaiseWithMessage(
+    procedure
+    begin
+      FApi.Faturar(12, 123, 1, CHAVE_44, Now);
+    end, EApiIndisponivel, 'Não foi possível conectar à API em http://localhost:9000.');
 end;
 
 initialization
