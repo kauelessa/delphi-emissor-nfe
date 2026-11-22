@@ -27,6 +27,7 @@ uses
   Repository.FormaPagamento in 'src\Repositories\Repository.FormaPagamento.pas',
   Repository.Nota in 'src\Repositories\Repository.Nota.pas',
   Repository.EventoFiscal in 'src\Repositories\Repository.EventoFiscal.pas',
+  Repository.VinculoProduto in 'src\Repositories\Repository.VinculoProduto.pas',
   Service.Calculo in 'src\Services\Service.Calculo.pas',
   Service.RetornoSefaz in 'src\Services\Service.RetornoSefaz.pas',
   Service.EmissorFiscal in 'src\Services\Service.EmissorFiscal.pas',

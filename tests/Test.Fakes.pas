@@ -9,7 +9,7 @@ uses
   System.SysUtils, System.Classes, System.Generics.Collections, Model.Tipos, Model.Nota,
   Model.Emitente, Model.Cliente, Model.Produto, Model.FormaPagamento, Model.EventoFiscal,
   Repository.Nota, Repository.Emitente, Repository.Cliente, Repository.Produto,
-  Repository.FormaPagamento, Repository.EventoFiscal, Service.EmissorFiscal,
+  Repository.FormaPagamento, Repository.EventoFiscal, Repository.VinculoProduto, Service.EmissorFiscal,
   Infra.ArquivoXml, Infra.Log;
 
 type
@@ -21,11 +21,15 @@ type
     UltimoStatus: TStatusNota;
     // a nota devolvida por Obter é criada a cada chamada (o service libera)
     CriarNotaObter: TFunc<TNota>;
+    // pedido da API que já tem nota autorizada (0 = nenhum) e o número dessa nota
+    PedidoFaturado: Integer;
+    NumeroNotaFaturada: Integer;
     constructor Create;
     procedure Salvar(ANota: TNota);
     procedure AtualizarSituacao(ANota: TNota);
     function Obter(AId: Integer): TNota;
     function Listar(const AFiltro: TFiltroNota): TObjectList<TNota>;
+    function ObterFaturadaDoPedido(APedidoApiId: Integer): TNota;
   end;
 
   TFakeEmitenteRepository = class(TInterfacedObject, IEmitenteRepository)
@@ -44,6 +48,7 @@ type
     UF: string;
     function Listar(const AFiltro: string): TObjectList<TCliente>;
     function Obter(AId: Integer): TCliente;
+    function ObterPorDocumento(const ADocumento: string): TCliente;
     procedure Salvar(ACliente: TCliente);
     procedure Inativar(AId: Integer);
   end;
@@ -51,12 +56,22 @@ type
   TFakeProdutoRepository = class(TInterfacedObject, IProdutoRepository)
   public
     CstCsosn: string;
+    InativoId: Integer;
     constructor Create;
     function Listar(const AFiltro: string): TObjectList<TProduto>;
     function Obter(AId: Integer): TProduto;
     function ObterPorCodigo(const ACodigo: string): TProduto;
     procedure Salvar(AProduto: TProduto);
     procedure Inativar(AId: Integer);
+  end;
+
+  TFakeVinculoRepository = class(TInterfacedObject, IVinculoProdutoRepository)
+  public
+    Vinculos: TDictionary<Integer, Integer>;
+    constructor Create;
+    destructor Destroy; override;
+    function ProdutoDoEmissor(AApiProdutoId: Integer): Integer;
+    procedure Gravar(AApiProdutoId, AProdutoId: Integer);
   end;
 
   TFakeFormaPagamentoRepository = class(TInterfacedObject, IFormaPagamentoRepository)
@@ -170,6 +185,17 @@ begin
   Result := TObjectList<TNota>.Create;
 end;
 
+function TFakeNotaRepository.ObterFaturadaDoPedido(APedidoApiId: Integer): TNota;
+begin
+  if (PedidoFaturado = 0) or (APedidoApiId <> PedidoFaturado) then
+    Exit(nil);
+  Result := TNota.Create;
+  Result.Id := 99;
+  Result.Numero := NumeroNotaFaturada;
+  Result.Status := TStatusNota.Autorizada;
+  Result.PedidoApiId := APedidoApiId;
+end;
+
 { TFakeEmitenteRepository }
 
 constructor TFakeEmitenteRepository.Create;
@@ -234,6 +260,14 @@ begin
     Result.Endereco.UF := 'SP';
 end;
 
+function TFakeClienteRepository.ObterPorDocumento(const ADocumento: string): TCliente;
+begin
+  if ADocumento = '52998224725' then
+    Result := Obter(1)
+  else
+    Result := nil;
+end;
+
 procedure TFakeClienteRepository.Salvar(ACliente: TCliente);
 begin
 end;
@@ -267,6 +301,7 @@ begin
   Result.CFOP := '5102';
   Result.Unidade := 'UN';
   Result.CstCsosn := CstCsosn;
+  Result.Ativo := AId <> InativoId;
   if AId = 1 then
     Result.Preco := 10.00
   else
@@ -284,6 +319,31 @@ end;
 
 procedure TFakeProdutoRepository.Inativar(AId: Integer);
 begin
+end;
+
+{ TFakeVinculoRepository }
+
+constructor TFakeVinculoRepository.Create;
+begin
+  inherited;
+  Vinculos := TDictionary<Integer, Integer>.Create;
+end;
+
+destructor TFakeVinculoRepository.Destroy;
+begin
+  Vinculos.Free;
+  inherited;
+end;
+
+function TFakeVinculoRepository.ProdutoDoEmissor(AApiProdutoId: Integer): Integer;
+begin
+  if not Vinculos.TryGetValue(AApiProdutoId, Result) then
+    Result := 0;
+end;
+
+procedure TFakeVinculoRepository.Gravar(AApiProdutoId, AProdutoId: Integer);
+begin
+  Vinculos.AddOrSetValue(AApiProdutoId, AProdutoId);
 end;
 
 { TFakeFormaPagamentoRepository }
