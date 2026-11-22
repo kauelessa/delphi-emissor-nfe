@@ -4,7 +4,7 @@ Emissor de **NF-e (modelo 55)** e **NFC-e (modelo 65)** desenvolvido em **Delphi
 
 > Faz parte do meu portfólio. Demonstra o fluxo fiscal completo que uso no dia a dia em ERPs para varejo: cadastro, emissão, transmissão, impressão e eventos da nota.
 
-> 🔗 Faz parte de um ecossistema: a **[delphi-horse-api](https://github.com/kauelessa/delphi-horse-api)** (back-end REST) guarda clientes, produtos e pedidos, o **[delphi-vcl-client](https://github.com/kauelessa/delphi-vcl-client)** (desktop) cria os pedidos, e este emissor **fatura esses pedidos como NF-e**.
+> 🔗 Faz parte de um ecossistema: a **[delphi-horse-api](https://github.com/kauelessa/delphi-horse-api)** (back-end REST) guarda clientes, produtos e pedidos, o **[delphi-vcl-client](https://github.com/kauelessa/delphi-vcl-client)** (desktop) e o app FireMonkey **delphi-fmx-forca-vendas** (vendedor externo, em construção) criam os pedidos, e este emissor **fatura esses pedidos como NF-e** e avisa a API quando a nota é autorizada ou cancelada.
 
 ## 🎯 Funcionalidades
 
@@ -18,6 +18,7 @@ Emissor de **NF-e (modelo 55)** e **NFC-e (modelo 65)** desenvolvido em **Delphi
 - Armazenamento e consulta dos XMLs autorizados
 - Envio do XML e do DANFE por e-mail
 - **Faturamento de pedidos da [delphi-horse-api](https://github.com/kauelessa/delphi-horse-api):** importa um pedido para a NF-e, com os dados fiscais vindos do cadastro do emissor
+- **Aviso de faturamento:** quando a NF-e de um pedido é autorizada ou cancelada, a API fica sabendo (e o pedido aparece como faturado no cliente e no app)
 
 ## 🧾 Faturamento de pedidos da API
 
@@ -28,7 +29,16 @@ Na tela de NF-e, o botão **Importar pedido** lista os pedidos da API e preenche
 3. **Nota:** quantidade e preço vêm do pedido (o valor negociado na venda); NCM, CFOP e CST vêm do produto do emissor. A observação recebe o número do pedido.
 4. **Pagamento e emissão** seguem como numa nota digitada.
 
-O pedido fica gravado na nota: um pedido com NF-e autorizada não pode ser faturado de novo, e pedidos cancelados na API não podem ser escolhidos. A API não é alterada: ela cuida da parte comercial (pedido e estoque) e o emissor da parte fiscal.
+O pedido fica gravado na nota: um pedido com NF-e autorizada não pode ser faturado de novo, e pedidos cancelados na API não podem ser escolhidos. A API cuida da parte comercial (pedido e estoque) e o emissor da parte fiscal.
+
+### Aviso de faturamento à API
+
+Quando a NF-e de um pedido é **autorizada**, o emissor manda à API o número, a série e a chave da nota (`PATCH /pedidos/:id/faturamento`); quando é **cancelada**, retira o faturamento (`DELETE`). Assim o pedido aparece como "Faturado na NF-e 123" no cliente VCL e no app.
+
+- **O aviso nunca atrapalha a nota.** A nota já está autorizada (ou cancelada) quando o aviso sai, e qualquer falha nele só vai para o log.
+- **API fora do ar:** a nota fica marcada com o aviso pendente (`NOTA.FATURAMENTO_PENDENTE`) e o emissor tenta de novo ao abrir o sistema e ao abrir a lista de pedidos da API. O reenvio para na primeira falha, para não esperar o tempo limite de cada nota.
+- **API recusa** (por exemplo, o pedido foi cancelado lá): repetir não resolveria, então fica só o registro no log.
+- **O que reenviar sai da situação atual da nota:** uma nota autorizada com aviso pendente e cancelada em seguida manda só o cancelamento.
 
 | | |
 |---|---|
@@ -122,7 +132,7 @@ delphi-emissor-nfe/
 5. Em `PastaSchemas`, indique a pasta dos schemas (XSD) da NF-e. O ACBr já traz a versão atual em `<pasta do ACBr>\Exemplos\ACBrDFe\Schemas\NFe`; apontar para ela mantém os schemas atualizados junto com o ACBr.
 6. Abra o `EmissorNFe.dproj` no RAD Studio, compile e execute.
 7. Na tela **Emitente**, cadastre os dados da empresa dona do certificado. Mantenha `Ambiente=homologacao`.
-8. *(Opcional)* Para faturar pedidos, suba a [delphi-horse-api](https://github.com/kauelessa/delphi-horse-api) e preencha a seção `[Api]` do `config.ini`:
+8. *(Opcional)* Para faturar pedidos (e avisar a API quando a nota for autorizada ou cancelada), suba a [delphi-horse-api](https://github.com/kauelessa/delphi-horse-api) e preencha a seção `[Api]` do `config.ini`:
 
    | Chave | Padrão | Descrição |
    |---|---|---|
@@ -141,6 +151,7 @@ Ao abrir, o sistema cria o banco se ele não existir (com `CriarBanco=1`), aplic
 | `003_seed_dados_exemplo.sql` | emitente fictício, produtos e cliente de teste | só com `ExecutarSeeds=1` |
 | `004_seed_corrige_ncm_caneca.sql` | corrige o NCM da caneca de exemplo (6911.10.90) | só com `ExecutarSeeds=1` |
 | `005_pedido_api.sql` | pedido da API na nota e vínculo de produtos da API com os do emissor | sempre |
+| `006_faturamento_pendente.sql` | marca de aviso de faturamento pendente na nota | sempre |
 
 Configuração na seção `[Migracao]` do `config.ini`:
 
@@ -171,6 +182,7 @@ Abra `tests/EmissorNFeTests.dpr` e execute (console DUnitX). Os testes rodam sem
 - [x] Contingência offline (NFC-e)
 - [x] Envio por e-mail e consulta de XMLs
 - [x] Faturamento de pedidos da delphi-horse-api (NF-e)
+- [x] Aviso de faturamento à API, com reenvio quando ela estiver fora do ar
 
 ## 👤 Autor
 
