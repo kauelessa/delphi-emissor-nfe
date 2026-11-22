@@ -3,9 +3,23 @@
 interface
 
 uses
-  DUnitX.TestFramework, Model.Tipos, Model.Nota, Service.Nota, Test.Fakes;
+  System.SysUtils, System.Generics.Collections, DUnitX.TestFramework, Model.Tipos, Model.Nota,
+  Service.Nota, Service.AvisoFaturamento, Test.Fakes;
 
 type
+  // grava as notas avisadas; com LevantarErro simula falha inesperada (ex.: banco fora)
+  TAvisoFake = class(TInterfacedObject, IAvisoFaturamento)
+  public
+    Autorizadas: TList<Integer>;
+    Canceladas: TList<Integer>;
+    LevantarErro: Boolean;
+    constructor Create;
+    destructor Destroy; override;
+    procedure NotaAutorizada(ANota: TNota);
+    procedure NotaCancelada(ANota: TNota);
+    function ReenviarPendentes: Integer;
+  end;
+
   [TestFixture]
   TTestNotaService = class
   private
@@ -23,6 +37,7 @@ type
     FRefs: array of IInterface;
     function NotaPronta(AModelo: TModeloNota): TNota;
     function NotaAutorizada: TNota;
+    procedure UsarAviso(AAviso: IAvisoFaturamento);
   public
     [Setup]
     procedure Setup;
@@ -73,12 +88,57 @@ type
     procedure Inutilizar_Homologada_RegistraEvento;
     [Test]
     procedure TransmitirContingencia_Autorizada_AtualizaStatus;
+    [Test]
+    procedure Emitir_NotaAutorizada_AvisaApi;
+    [Test]
+    procedure Emitir_NotaRejeitada_NaoAvisa;
+    [Test]
+    procedure Emitir_AvisoLevantaErro_NotaContinuaAutorizada;
+    [Test]
+    procedure Emitir_ApiForaNoAviso_NotaAutorizadaEPendente;
+    [Test]
+    procedure Cancelar_Homologado_AvisaCancelamento;
+    [Test]
+    procedure Cancelar_NaoHomologado_NaoAvisa;
   end;
 
 implementation
 
 uses
-  System.SysUtils, Service.EmissorFiscal;
+  Service.EmissorFiscal, Infra.ApiPedidos, Test.AvisoFaturamento;
+
+{ TAvisoFake }
+
+constructor TAvisoFake.Create;
+begin
+  inherited;
+  Autorizadas := TList<Integer>.Create;
+  Canceladas := TList<Integer>.Create;
+end;
+
+destructor TAvisoFake.Destroy;
+begin
+  Canceladas.Free;
+  Autorizadas.Free;
+  inherited;
+end;
+
+procedure TAvisoFake.NotaAutorizada(ANota: TNota);
+begin
+  if LevantarErro then
+    raise Exception.Create('banco fora');
+  Autorizadas.Add(ANota.Id);
+end;
+
+procedure TAvisoFake.NotaCancelada(ANota: TNota);
+begin
+  Canceladas.Add(ANota.Id);
+end;
+
+function TAvisoFake.ReenviarPendentes: Integer;
+begin
+  Result := 0;
+end;
 
 { TTestNotaService }
 
@@ -402,6 +462,98 @@ begin
   Assert.IsTrue(LResultado.Sucesso, LResultado.Mensagem);
   Assert.AreEqual(TStatusNota.Autorizada, FNotaRepo.UltimoStatus);
   Assert.AreEqual(1, FEmissor.Transmissoes);
+end;
+
+procedure TTestNotaService.UsarAviso(AAviso: IAvisoFaturamento);
+begin
+  FService := TNotaService.Create(FNotaRepo, FEmitenteRepo, FClienteRepo, FProdutoRepo,
+    TFakeFormaPagamentoRepository.Create, FEventoRepo, FEmissor, FArquivoXml, FLog, AAviso);
+end;
+
+procedure TTestNotaService.Emitir_NotaAutorizada_AvisaApi;
+var
+  LAviso: TAvisoFake;
+begin
+  LAviso := TAvisoFake.Create;
+  UsarAviso(LAviso);
+  FNota := NotaPronta(TModeloNota.NFe);
+  FNota.PedidoApiId := 12;
+  Assert.IsTrue(FService.Emitir(FNota).Sucesso);
+  Assert.AreEqual(1, LAviso.Autorizadas.Count);
+  Assert.AreEqual(FNota.Id, LAviso.Autorizadas[0]);
+end;
+
+procedure TTestNotaService.Emitir_NotaRejeitada_NaoAvisa;
+var
+  LAviso: TAvisoFake;
+begin
+  LAviso := TAvisoFake.Create;
+  UsarAviso(LAviso);
+  FEmissor.RetornoTransmissao.CStat := 778;
+  FEmissor.RetornoTransmissao.Motivo := 'Rejeicao: Informado NCM inexistente';
+  FNota := NotaPronta(TModeloNota.NFe);
+  FNota.PedidoApiId := 12;
+  Assert.IsFalse(FService.Emitir(FNota).Sucesso);
+  Assert.AreEqual(0, LAviso.Autorizadas.Count);
+end;
+
+procedure TTestNotaService.Emitir_AvisoLevantaErro_NotaContinuaAutorizada;
+var
+  LAviso: TAvisoFake;
+  LResultado: TResultadoOperacao;
+begin
+  LAviso := TAvisoFake.Create;
+  LAviso.LevantarErro := True;
+  UsarAviso(LAviso);
+  FNota := NotaPronta(TModeloNota.NFe);
+  FNota.PedidoApiId := 12;
+  LResultado := FService.Emitir(FNota);
+  Assert.IsTrue(LResultado.Sucesso, LResultado.Mensagem);
+  Assert.AreEqual(TStatusNota.Autorizada, FNota.Status);
+  Assert.IsTrue(FLog.Linhas.Text.Contains('banco fora'), FLog.Linhas.Text);
+end;
+
+procedure TTestNotaService.Emitir_ApiForaNoAviso_NotaAutorizadaEPendente;
+var
+  LApi: TApiAvisoFake;
+  LResultado: TResultadoOperacao;
+begin
+  LApi := TApiAvisoFake.Create;
+  LApi.SempreIndisponivel := True;
+  UsarAviso(TAvisoFaturamentoService.Create(LApi, FNotaRepo, FLog));
+  FNota := NotaPronta(TModeloNota.NFe);
+  FNota.PedidoApiId := 12;
+  LResultado := FService.Emitir(FNota);
+  Assert.IsTrue(LResultado.Sucesso, LResultado.Mensagem);
+  Assert.StartsWith('NF-e nº 1 autorizada.', LResultado.Mensagem);
+  Assert.DoesNotContain(LResultado.Mensagem, 'API');
+  Assert.AreEqual(TStatusNota.Autorizada, FNota.Status);
+  Assert.IsTrue(FNotaRepo.Pendente(FNota.Id));
+end;
+
+procedure TTestNotaService.Cancelar_Homologado_AvisaCancelamento;
+var
+  LAviso: TAvisoFake;
+begin
+  LAviso := TAvisoFake.Create;
+  UsarAviso(LAviso);
+  FNotaRepo.CriarNotaObter := NotaAutorizada;
+  Assert.IsTrue(FService.Cancelar(10, 'Cliente desistiu da compra').Sucesso);
+  Assert.AreEqual(1, LAviso.Canceladas.Count);
+  Assert.AreEqual(10, LAviso.Canceladas[0]);
+end;
+
+procedure TTestNotaService.Cancelar_NaoHomologado_NaoAvisa;
+var
+  LAviso: TAvisoFake;
+begin
+  LAviso := TAvisoFake.Create;
+  UsarAviso(LAviso);
+  FEmissor.RetornoEvento.CStat := 501;
+  FEmissor.RetornoEvento.Motivo := 'Rejeicao: Prazo de cancelamento superior ao previsto';
+  FNotaRepo.CriarNotaObter := NotaAutorizada;
+  Assert.IsFalse(FService.Cancelar(10, 'Cliente desistiu da compra').Sucesso);
+  Assert.AreEqual(0, LAviso.Canceladas.Count);
 end;
 
 initialization

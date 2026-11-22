@@ -71,7 +71,7 @@ implementation
 
 uses
   Model.Tipos, View.Nota, View.ConsultaNota, View.Cliente, View.Produto, View.FormaPagamento,
-  View.Emitente, View.Inutilizacao;
+  View.Emitente, View.Inutilizacao, Controller.PedidoApi;
 
 procedure TfrmPrincipal.FormCreate(Sender: TObject);
 begin
@@ -102,7 +102,9 @@ begin
   if not FController.ConfigEncontrado then
     MessageDlg('Arquivo config.ini não encontrado.' + sLineBreak + sLineBreak +
       'Copie o config.example.ini para a pasta do executável com o nome config.ini ' +
-      'e preencha os dados do banco e do certificado.', mtWarning, [mbOK], 0);
+      'e preencha os dados do banco e do certificado.', mtWarning, [mbOK], 0)
+  else
+    TPedidoApiController.ReenviarAvisosPendentes;
 end;
 
 procedure TfrmPrincipal.AtualizarStatus;

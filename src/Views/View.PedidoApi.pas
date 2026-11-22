@@ -74,6 +74,8 @@ var
 begin
   LForm := TfrmPedidoApi.Create(nil);
   try
+    // aproveita a ida à API para mandar avisos de faturamento que ficaram pendentes
+    TPedidoApiController.ReenviarAvisosPendentes;
     // carrega antes de mostrar: com a API fora do ar o erro aparece sem abrir uma tela vazia
     LForm.Carregar(1);
     if LForm.ShowModal = mrOk then

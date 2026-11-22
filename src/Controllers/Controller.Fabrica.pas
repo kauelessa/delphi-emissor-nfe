@@ -6,13 +6,14 @@
 interface
 
 uses
-  System.SysUtils, Service.EmissorFiscal, Service.Nota, Service.Emitente, Service.Cliente,
-  Service.Produto, Service.FormaPagamento, Service.FaturamentoPedido;
+  System.SysUtils, Infra.ApiPedidos, Service.EmissorFiscal, Service.Nota, Service.Emitente, Service.Cliente,
+  Service.Produto, Service.FormaPagamento, Service.FaturamentoPedido, Service.AvisoFaturamento;
 
 type
   TFabrica = class
   private
     class var FCriarEmissor: TFunc<IEmissorFiscal>;
+    class function ApiPedidos: IPedidoApi;
   public
     class procedure RegistrarEmissor(const ACriar: TFunc<IEmissorFiscal>);
     class function NotaService: INotaService;
@@ -21,6 +22,7 @@ type
     class function ProdutoService: IProdutoService;
     class function FormaPagamentoService: IFormaPagamentoService;
     class function FaturamentoPedidoService: IFaturamentoPedidoService;
+    class function AvisoFaturamento: IAvisoFaturamento;
   end;
 
 implementation
@@ -28,7 +30,7 @@ implementation
 uses
   Infra.Conexao, Infra.Config, Infra.Log, Infra.ArquivoXml, Repository.Nota,
   Repository.Emitente, Repository.Cliente, Repository.Produto, Repository.FormaPagamento,
-  Repository.EventoFiscal, Repository.VinculoProduto, Infra.ApiPedidos;
+  Repository.EventoFiscal, Repository.VinculoProduto;
 
 class procedure TFabrica.RegistrarEmissor(const ACriar: TFunc<IEmissorFiscal>);
 begin
@@ -49,7 +51,8 @@ begin
     TEventoFiscalRepository.Create(Conexao),
     FCriarEmissor(),
     TArquivoXmlDisco.Create(Config.NFe.PastaXml),
-    Log);
+    Log,
+    AvisoFaturamento);
 end;
 
 class function TFabrica.EmitenteService: IEmitenteService;
@@ -72,11 +75,21 @@ begin
   Result := TFormaPagamentoService.Create(TFormaPagamentoRepository.Create(Conexao));
 end;
 
+class function TFabrica.ApiPedidos: IPedidoApi;
+begin
+  Result := TPedidoApiHttp.Create(TNetHttpTransporte.Create(Config.Api.TimeoutMs), Config.Api.Url,
+    Config.Api.Usuario, Config.Api.Senha);
+end;
+
+class function TFabrica.AvisoFaturamento: IAvisoFaturamento;
+begin
+  Result := TAvisoFaturamentoService.Create(ApiPedidos, TNotaRepository.Create(Conexao), Log);
+end;
+
 class function TFabrica.FaturamentoPedidoService: IFaturamentoPedidoService;
 begin
   Result := TFaturamentoPedidoService.Create(
-    TPedidoApiHttp.Create(TNetHttpTransporte.Create(Config.Api.TimeoutMs), Config.Api.Url,
-      Config.Api.Usuario, Config.Api.Senha),
+    ApiPedidos,
     NotaService,
     TNotaRepository.Create(Conexao),
     TClienteRepository.Create(Conexao),

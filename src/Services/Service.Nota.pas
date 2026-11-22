@@ -9,6 +9,8 @@
   - o XML de envio e o de retorno são gravados em disco (IArquivoXml);
   - a operação é registrada no log e na tabela NOTA_EVENTO;
   - o retorno da SEFAZ é traduzido em mensagem clara (TRetornoSefaz).
+  Nota de pedido da delphi-horse-api autorizada ou cancelada avisa a API
+  (IAvisoFaturamento); falha no aviso nunca muda o resultado fiscal.
 }
 
 interface
@@ -17,7 +19,7 @@ uses
   System.Generics.Collections, Model.Tipos, Model.Nota, Model.Emitente, Model.Cliente,
   Repository.Nota, Repository.Emitente, Repository.Cliente, Repository.Produto,
   Repository.FormaPagamento, Repository.EventoFiscal, Service.EmissorFiscal,
-  Infra.ArquivoXml, Infra.Log;
+  Infra.ArquivoXml, Infra.Log, Service.AvisoFaturamento;
 
 type
   INotaService = interface
@@ -61,6 +63,8 @@ type
     FEmissor: IEmissorFiscal;
     FArquivoXml: IArquivoXml;
     FLog: ILog;
+    FAviso: IAvisoFaturamento;
+    procedure AvisarApi(ANota: TNota; ACancelada: Boolean);
     function ObterEmitente: TEmitente;
     function ObterNota(AId: Integer): TNota;
     function SalvarXml(const ACnpj, ANome, AConteudo: string): string;
@@ -80,7 +84,8 @@ type
     constructor Create(ANotaRepo: INotaRepository; AEmitenteRepo: IEmitenteRepository;
       AClienteRepo: IClienteRepository; AProdutoRepo: IProdutoRepository;
       AFormaPagamentoRepo: IFormaPagamentoRepository; AEventoRepo: IEventoFiscalRepository;
-      AEmissor: IEmissorFiscal; AArquivoXml: IArquivoXml; ALog: ILog);
+      AEmissor: IEmissorFiscal; AArquivoXml: IArquivoXml; ALog: ILog;
+      AAviso: IAvisoFaturamento = nil);
 
     function NovaNota(AModelo: TModeloNota): TNota;
     function Obter(AId: Integer): TNota;
@@ -122,7 +127,7 @@ uses
 constructor TNotaService.Create(ANotaRepo: INotaRepository; AEmitenteRepo: IEmitenteRepository;
   AClienteRepo: IClienteRepository; AProdutoRepo: IProdutoRepository;
   AFormaPagamentoRepo: IFormaPagamentoRepository; AEventoRepo: IEventoFiscalRepository;
-  AEmissor: IEmissorFiscal; AArquivoXml: IArquivoXml; ALog: ILog);
+  AEmissor: IEmissorFiscal; AArquivoXml: IArquivoXml; ALog: ILog; AAviso: IAvisoFaturamento);
 begin
   inherited Create;
   FNotaRepo := ANotaRepo;
@@ -134,9 +139,26 @@ begin
   FEmissor := AEmissor;
   FArquivoXml := AArquivoXml;
   FLog := ALog;
+  FAviso := AAviso;
 end;
 
 { --- auxiliares --- }
+
+procedure TNotaService.AvisarApi(ANota: TNota; ACancelada: Boolean);
+begin
+  if FAviso = nil then
+    Exit;
+  // a nota já está gravada; aqui nada pode mudar o resultado da operação fiscal
+  try
+    if ACancelada then
+      FAviso.NotaCancelada(ANota)
+    else
+      FAviso.NotaAutorizada(ANota);
+  except
+    on E: Exception do
+      FLog.Erro(Format('Falha ao avisar a API sobre a nota %d: %s', [ANota.Id, E.Message]));
+  end;
+end;
 
 function TNotaService.ObterEmitente: TEmitente;
 begin
@@ -557,6 +579,9 @@ begin
     IfThen(LArquivoRetorno <> '', LArquivoRetorno, LArquivoEnvio), Result.Sucesso);
   FLog.Fiscal(Format('Retorno %s nº %d: cStat %d - %s', [ANota.Modelo.Descricao, ANota.Numero,
     ARetorno.CStat, ARetorno.Motivo]));
+
+  if LSituacao = TSituacaoRetorno.Autorizado then
+    AvisarApi(ANota, False);
 end;
 
 function TNotaService.EmitirContingencia(ANota: TNota; AEmitente: TEmitente;
@@ -671,6 +696,7 @@ begin
         LNota.CStat := LRetorno.CStat;
         LNota.Motivo := LRetorno.Motivo;
         FNotaRepo.AtualizarSituacao(LNota);
+        AvisarApi(LNota, True);
         Result := TResultadoOperacao.Ok(Format('Cancelamento homologado. Protocolo: %s', [LRetorno.Protocolo]));
       end
       else
